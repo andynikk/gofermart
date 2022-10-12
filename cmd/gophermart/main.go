@@ -16,9 +16,11 @@ type server struct {
 }
 
 func main() {
-
+	fmt.Println("/////////////////", 1)
 	server := new(server)
+	fmt.Println("/////////////////", 2)
 	handlers.NewServer(&server.Server)
+	fmt.Println("/////////////////", 3)
 
 	fmt.Println("/////////////////", server.Address)
 	go func() {
