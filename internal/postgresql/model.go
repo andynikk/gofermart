@@ -69,11 +69,11 @@ func (a *Account) NewAccount() int {
 	}
 
 	rows, err := conn.Query(ctx, constants.QuerySelectUserWithWhereTemplate, a.Name)
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return http.StatusBadRequest
 	}
+	defer rows.Close()
 
 	if rows.Next() {
 		return http.StatusConflict
@@ -101,11 +101,11 @@ func (a *Account) GetAccount() int {
 
 	heshVal := cryptography.HeshSHA256(a.Password, a.Key)
 	rows, err := conn.Query(ctx, constants.QuerySelectUserWithPasswordTemplate, a.Name, heshVal)
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return http.StatusBadRequest
 	}
+	defer rows.Close()
 
 	if rows.Next() {
 		return http.StatusOK
@@ -123,11 +123,11 @@ func (a *Account) UserOrders() int {
 	}
 
 	rows, err := conn.Query(ctx, constants.QueryUserOrdersTemplate, a.Name)
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return http.StatusBadRequest
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		return http.StatusConflict
@@ -150,11 +150,11 @@ func (o *Order) NewOrder() int {
 		return http.StatusInternalServerError
 	}
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, o.Number)
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return http.StatusBadRequest
 	}
+	defer rows.Close()
 
 	if rows.Next() {
 		return http.StatusConflict
@@ -166,11 +166,11 @@ func (o *Order) NewOrder() int {
 	}
 
 	rows, err = conn.Query(ctx, constants.QueryAddStatusTemplate, o.Number, "NEW", time.Now())
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return http.StatusBadRequest
 	}
+	defer rows.Close()
 	conn.Release()
 
 	return http.StatusOK
@@ -192,11 +192,11 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 	}
 
 	rows, err := conn.Query(ctx, constants.QueryListOrderWhereTemplate, claims["user"])
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return arrOrders, http.StatusBadRequest
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var ord orderDB
 
@@ -225,11 +225,12 @@ func (o *Order) SetNextStatus() {
 	}
 
 	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate)
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var ord orderDB
 
@@ -309,11 +310,12 @@ func (o *Order) BalansOrders() ([]balansDB, int) {
 	}
 
 	rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
-	defer rows.Close()
 	if err != nil {
 		conn.Release()
 		return arrBalans, http.StatusBadRequest
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var bdb balansDB
 
@@ -413,7 +415,7 @@ func (o *Order) UserAccrual() ([]withdrawDB, int) {
 }
 
 func (ow *OrderWithdraw) TryWithdraw() int {
-	var arrBalans []balansDB
+	//var arrBalans []balansDB
 
 	ctx := context.Background()
 	conn, err := ow.Pool.Acquire(ctx)
@@ -448,7 +450,7 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 			conn.Release()
 			return http.StatusPaymentRequired
 		}
-		arrBalans = append(arrBalans, bdb)
+		//arrBalans = append(arrBalans, bdb)
 	}
 	conn.Release()
 
@@ -463,4 +465,86 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 	}
 
 	return http.StatusOK
+}
+
+func CreateModeLDB(Pool *pgxpool.Pool) {
+	ctx := context.Background()
+	conn, err := Pool.Acquire(ctx)
+	if err != nil {
+		return
+	}
+
+	if _, err = Pool.Exec(ctx, `CREATE SCHEMA IF NOT EXISTS gofermart`); err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+
+	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.order_accrual
+									(
+										"Accrual" numeric,
+										"DateAccrual" timestamp with time zone,
+										"TypeAccrual" character varying(10) COLLATE pg_catalog."default",
+										"Order" numeric
+									)
+									
+									TABLESPACE pg_default;
+									
+									ALTER TABLE IF EXISTS gofermart.order_accrual
+										OWNER to postgres;`)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		conn.Release()
+		return
+	}
+
+	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.order_statuses
+									(
+										"Order" numeric,
+										"Status" character varying(150) COLLATE pg_catalog."default",
+										"DateStatus" timestamp with time zone
+									)
+									
+									TABLESPACE pg_default;
+									
+									ALTER TABLE IF EXISTS gofermart.order_statuses
+										OWNER to postgres;`)
+
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		conn.Release()
+		return
+	}
+
+	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.orders
+									(
+										"User" character varying(150) COLLATE pg_catalog."default" NOT NULL,
+										"Order" numeric NOT NULL
+									)
+									
+									TABLESPACE pg_default;
+									
+									ALTER TABLE IF EXISTS gofermart.orders
+										OWNER to postgres;`)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		conn.Release()
+		return
+	}
+
+	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.users
+									(
+										"User" character varying(150) COLLATE pg_catalog."default" NOT NULL,
+										"Password" character varying(256) COLLATE pg_catalog."default" NOT NULL,
+										CONSTRAINT users_pkey PRIMARY KEY ("User")
+									)
+									
+									TABLESPACE pg_default;
+									
+									ALTER TABLE IF EXISTS gofermart.users
+										OWNER to postgres;`)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		conn.Release()
+		return
+	}
 }

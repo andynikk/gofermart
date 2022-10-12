@@ -62,6 +62,8 @@ func NewServer(srv *Server) {
 
 	srv.ServerConfig = new(environment.ServerConfig)
 	srv.ServerConfig.SetConfigServer()
+
+	postgresql.CreateModeLDB(srv.Pool)
 }
 
 func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
