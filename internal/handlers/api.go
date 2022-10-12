@@ -358,7 +358,7 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
-
+	//
 	w.WriteHeader(status)
 	w.Write(listOrderJSON)
 }
