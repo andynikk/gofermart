@@ -58,6 +58,12 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	newAccount.Key = srv.Cfg.Key
 
 	tx, err := srv.Pool.Begin(srv.Context.Ctx)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	rez := newAccount.NewAccount()
 	w.WriteHeader(rez)
 	if rez == http.StatusOK {
@@ -70,7 +76,10 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		if tokenString, err = ct.GenerateJWT(); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
-		w.Write([]byte(tokenString))
+		_, err = w.Write([]byte(tokenString))
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+		}
 	} else {
 		if err := tx.Rollback(srv.Context.Ctx); err != nil {
 			constants.Logger.ErrorLog(err)
@@ -133,7 +142,10 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Authorization", tokenString)
 	r.Header.Add("Authorization", tokenString)
 
-	w.Write([]byte(tokenString))
+	_, err = w.Write([]byte(tokenString))
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
 
 func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
@@ -187,6 +199,12 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tx, err := srv.Pool.Begin(srv.Context.Ctx)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	rez := order.NewOrder()
 	w.WriteHeader(rez)
 	if rez == http.StatusOK {
@@ -260,7 +278,10 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	listOrder, status := order.ListOrder()
 	if status != http.StatusOK {
 		w.WriteHeader(status)
-		w.Write([]byte(""))
+		_, err := w.Write([]byte(""))
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+		}
 		return
 	}
 
@@ -270,15 +291,25 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(status)
-	w.Write(listOrderJSON)
+	_, err = w.Write(listOrderJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
 
 func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
+
 	order := new(postgresql.Order)
 	order.Number = 0
 	order.Pool = srv.Pool
 
 	order.SetNextStatus()
+
+	w.WriteHeader(http.StatusOK)
+
+	if err := r.Body.Close(); err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
 
 func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +326,11 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	listBalans, status := order.BalansOrders()
 	if status != http.StatusOK {
 		w.WriteHeader(status)
-		w.Write([]byte(""))
+		_, err := w.Write([]byte(""))
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+		}
+
 		return
 	}
 
@@ -305,7 +340,10 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(status)
-	w.Write(listBalansJSON)
+	_, err = w.Write(listBalansJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
 
 func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request) {
@@ -322,7 +360,10 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	listBalans, status := order.UserWithdrawal()
 	if status != http.StatusOK {
 		w.WriteHeader(status)
-		w.Write([]byte(""))
+		_, err := w.Write([]byte(""))
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+		}
 		return
 	}
 
@@ -332,7 +373,10 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(status)
-	w.Write(listBalansJSON)
+	_, err = w.Write(listBalansJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
 
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
@@ -350,7 +394,10 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	listOrder, status := order.ListOrder()
 	if status != http.StatusOK {
 		w.WriteHeader(status)
-		w.Write([]byte(""))
+		_, err := w.Write([]byte(""))
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+		}
 		return
 	}
 
@@ -360,5 +407,8 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	}
 	//
 	w.WriteHeader(status)
-	w.Write(listOrderJSON)
+	_, err = w.Write(listOrderJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
