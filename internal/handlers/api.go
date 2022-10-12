@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"gofermart/internal/token"
 	"io"
 	"io/ioutil"
@@ -22,6 +23,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	var bodyJSON io.Reader
 	var arrBody []byte
 
+	fmt.Println("---------1")
 	contentEncoding := r.Header.Get("Content-Encoding")
 
 	bodyJSON = r.Body
@@ -42,13 +44,14 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 		bodyJSON = bytes.NewReader(arrBody)
 	}
-
+	fmt.Println("---------2")
 	respByte, err := ioutil.ReadAll(bodyJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
 	}
 
+	fmt.Println("---------3")
 	newAccount := new(postgresql.Account)
 	newAccount.Pool = srv.Pool
 	if err := json.Unmarshal(respByte, &newAccount.User); err != nil {
@@ -57,6 +60,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 	newAccount.Key = srv.Cfg.Key
 
+	fmt.Println("---------4")
 	tx, err := srv.Pool.Begin(srv.Context.Ctx)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
@@ -64,9 +68,12 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("---------5")
 	rez := newAccount.NewAccount()
 	w.WriteHeader(rez)
+	fmt.Println("---------6")
 	if rez == http.StatusOK {
+		fmt.Println("---------7")
 		if err := tx.Commit(srv.Context.Ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
@@ -81,10 +88,27 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 			constants.Logger.ErrorLog(err)
 		}
 	} else {
+		fmt.Println("---------8")
 		if err := tx.Rollback(srv.Context.Ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
+		return
 	}
+	fmt.Println("---------9")
+	tokenString := ""
+	tc := token.Claims{Authorized: true, User: newAccount.Name, Exp: constants.TimeLiveToken}
+	if tokenString, err = tc.GenerateJWT(); err != nil {
+		constants.Logger.ErrorLog(err)
+	}
+
+	w.Header().Add("Authorization", tokenString)
+	r.Header.Add("Authorization", tokenString)
+
+	_, err = w.Write([]byte(tokenString))
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
+	fmt.Println("---------10")
 }
 
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
