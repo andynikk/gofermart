@@ -2,16 +2,18 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/theplant/luhn"
 	"gofermart/internal/token"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/theplant/luhn"
+	"time"
 
 	"gofermart/internal/compression"
 	"gofermart/internal/constants"
@@ -44,6 +46,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 		bodyJSON = bytes.NewReader(arrBody)
 	}
+
 	fmt.Println("---------2")
 	respByte, err := ioutil.ReadAll(bodyJSON)
 	if err != nil {
@@ -405,34 +408,145 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Content-Type", "application/json")
+	number := mux.Vars(r)["number"]
+	w.WriteHeader(http.StatusOK)
 
-	order := new(postgresql.Order)
-	order.Number = 0
-	order.Pool = srv.Pool
+	cfg := new(postgresql.Cfg)
+	cfg.Pool = srv.Pool
+	cfg.Key = srv.Cfg.Key
 	if r.Header["Authorization"] != nil {
-		order.Token = r.Header["Authorization"][0]
+		cfg.Token = r.Header["Authorization"][0]
 	}
 
-	listOrder, status := order.ListOrder()
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		_, err := w.Write([]byte(""))
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-		}
+	scoringSystem, httpStatus := GetScoringSystem(number)
+	if httpStatus != http.StatusOK {
+		w.WriteHeader(httpStatus)
+		return
+	}
+	order, err := strconv.Atoi(scoringSystem.Order)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		w.WriteHeader(httpStatus)
 		return
 	}
 
-	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
+	//ctx := srv.Context.Ctx
+	ctx := context.Background()
+	conn, err := srv.Pool.Acquire(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rows, err := conn.Query(ctx, constants.QuerySelectAccrualPLUSS, order)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
-	//
-	w.WriteHeader(status)
-	_, err = w.Write(listOrderJSON)
+	if rows.Next() {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+	conn.Release()
+
+	tx, err := srv.Pool.Begin(ctx)
+
+	conn, err = srv.Pool.Acquire(ctx)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = tx.Rollback(ctx)
+		return
+	}
+	defer conn.Release()
+
+	if _, err = conn.Query(ctx, constants.QueryAddAccrual, order, scoringSystem.Accrual, time.Now(), "PLUS"); err != nil {
+		_ = tx.Rollback(ctx)
+		w.WriteHeader(http.StatusInternalServerError)
 		constants.Logger.ErrorLog(err)
+		return
+	}
+
+	nameColum := ""
+	switch scoringSystem.Status {
+	case "REGISTERED":
+		nameColum = "createdAt"
+	case "INVALID":
+		nameColum = "failedAt"
+	case "PROCESSING":
+		nameColum = "startedAt"
+	case "PROCESSED":
+		nameColum = "finishedAt"
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	conn, err = srv.Pool.Acquire(ctx)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer conn.Release()
+	rows, err = conn.Query(ctx,
+		fmt.Sprintf(`SELECT * FROM gofermart.orders AS orders
+							WHERE "orderID"=$1 and "%s" ISNULL;`, nameColum), order)
+	defer rows.Close()
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = tx.Rollback(ctx)
+		constants.Logger.ErrorLog(err)
+		return
+	}
+	if rows.Next() {
+		_ = tx.Rollback(ctx)
+		return
+	}
+
+	if _, err = conn.Query(ctx,
+		fmt.Sprintf(`UPDATE gofermart.orders
+					SET "%s"=$2
+					WHERE "orderID"=$1;`, nameColum), order, time.Now()); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		constants.Logger.ErrorLog(err)
+		_ = tx.Rollback(ctx)
+		return
+	}
+	conn.Release()
+	_ = tx.Commit(ctx)
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (srv *Server) SetUserAccrualGET(w http.ResponseWriter, r *http.Request) {
+
+	cfg := new(postgresql.Cfg)
+	cfg.Pool = srv.Pool
+	cfg.Key = srv.Cfg.Key
+	if r.Header["Authorization"] != nil {
+		cfg.Token = r.Header["Authorization"][0]
+	}
+
+	arrListOrders, httpStatus := cfg.ListNotAccrualOrders()
+	if httpStatus != http.StatusOK {
+		w.WriteHeader(httpStatus)
+		return
+	}
+
+	for _, val := range arrListOrders {
+		scoringSystem, httpStatus := GetScoringSystem(strconv.Itoa(val.Order))
+		if httpStatus != http.StatusOK {
+			w.WriteHeader(httpStatus)
+			return
+		}
+
+		orderWithdraw := new(postgresql.OrderWithdraw)
+		orderWithdraw.Pool = srv.Pool
+		if r.Header["Authorization"] != nil {
+			orderWithdraw.Token = r.Header["Authorization"][0]
+		}
+		orderWithdraw.Withdraw = scoringSystem.Accrual
+		orderWithdraw.Order = val.Order
+
+		w.WriteHeader(orderWithdraw.TryWithdraw())
 	}
 }

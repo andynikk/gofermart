@@ -40,99 +40,56 @@ const (
 						gofermart.orders
 					WHERE 
 						"User" = $1;`
-	QueryOrderWhereNumTemplate = `SELECT "User", "Order"
-					FROM 
-						gofermart.orders
-					WHERE 
-						"Order" = $1;`
-	QueryListOrderWhereTemplate = `SELECT 
-										gofermart.orders."Order" 
-										, CurrentStatus.Status 
-										, coalesce(OrderAccrua.accrual, 0) AS Accrual 
-										, CurrentStatus.UploadedAt as UploadedAt	
-									FROM 
-										gofermart.orders
-									LEFT JOIN (SELECT 
-										DateCurrentStatus."Order", 
-										DateCurrentStatus.DateStatus as UploadedAt, 
-										gofermart.order_statuses."Status" as Status
-											FROM (SELECT 
-													"Order" as "Order", 
-													Max("DateStatus") as DateStatus
-													FROM 
-														gofermart.order_statuses		
-													GROUP BY 
-														gofermart.order_statuses."Order") as DateCurrentStatus	
-											LEFT JOIN 
-												gofermart.order_statuses 
-											ON DateCurrentStatus."Order" = gofermart.order_statuses."Order"
-											AND DateCurrentStatus.DateStatus = gofermart.order_statuses."DateStatus") AS CurrentStatus 
-									ON gofermart.orders."Order" = CurrentStatus."Order"	
-									
-									LEFT JOIN (SELECT 
-													gofermart.order_statuses."Order", 
-													gofermart.order_statuses."DateStatus" as DateCreate
-												FROM 
-													gofermart.order_statuses
-												WHERE 
-													gofermart.order_statuses."Status" = 'NEW') as CreateStatus 
-										ON orders."Order" = CreateStatus."Order"
-									
-									LEFT JOIN (select 
-													oa."Order", 
-													sum(CASE when oa."TypeAccrual" = 'MINUS' then oa."Accrual" * -1 else oa."Accrual" end) as accrual
-												from 
-													gofermart.order_accrual as oa
-												group by 
-													oa."Order") as OrderAccrua
-										ON orders."Order" = OrderAccrua."Order"				
-									
-									WHERE gofermart.orders."User" = $1
-											ORDER BY CreateStatus.DateCreate;`
 
-	QueryListOrderTemplate = `SELECT 
-									gofermart.orders."Order" 
-									, CurrentStatus.Status 
-									, coalesce(OrderAccrua.accrual, 0) AS Accrual 
-									, CurrentStatus.UploadedAt as UploadedAt	
-								FROM 
-									gofermart.orders
-								LEFT JOIN (SELECT 
-									DateCurrentStatus."Order", 
-									DateCurrentStatus.DateStatus as UploadedAt, 
-									gofermart.order_statuses."Status" as Status
-										FROM (SELECT 
-												"Order" as "Order", 
-												Max("DateStatus") as DateStatus
-												FROM 
-													gofermart.order_statuses		
-												GROUP BY 
-													gofermart.order_statuses."Order") as DateCurrentStatus	
-										LEFT JOIN 
-											gofermart.order_statuses 
-										ON DateCurrentStatus."Order" = gofermart.order_statuses."Order"
-										AND DateCurrentStatus.DateStatus = gofermart.order_statuses."DateStatus") AS CurrentStatus 
-								ON gofermart.orders."Order" = CurrentStatus."Order"	
-								
-								LEFT JOIN (SELECT 
-												gofermart.order_statuses."Order", 
-												gofermart.order_statuses."DateStatus" as DateCreate
-											FROM 
-												gofermart.order_statuses
-											WHERE 
-												gofermart.order_statuses."Status" = 'NEW') as CreateStatus 
-									ON orders."Order" = CreateStatus."Order"
-								
-								LEFT JOIN (select 
-												oa."Order", 
-												sum(CASE when oa."TypeAccrual" = 'MINUS' then oa."Accrual" * -1 else oa."Accrual" end) as accrual
-											from 
-												gofermart.order_accrual as oa
-											group by 
-												oa."Order") as OrderAccrua
-									ON orders."Order" = OrderAccrua."Order"				
-									
-									ORDER BY CreateStatus.DateCreate;`
+	QueryOrderWhereNumTemplate = `SELECT
+									"userID"
+									 , "orderID"
+									 , "createdAt"
+									 , "startedAt"
+									 , "finishedAt"
+									 , "failedAt"
+									 , CASE WHEN NOT "failedAt" ISNULL THEN 'INVALID' ELSE 'NEW' END AS status
+								FROM
+									gofermart.orders as orders
+								WHERE
+										"userID" = $1 and "orderID" = $2;`
+
+	QueryListOrderTemplate = `SELECT	
+								 orders."orderID"
+								, CASE
+									 WHEN NOT orders."failedAt" ISNULL THEN 'INVALID'
+									 WHEN NOT orders."finishedAt" ISNULL THEN 'PROCESSED'
+									 WHEN NOT orders."startedAt" ISNULL THEN 'PROCESSING'
+									 ELSE 'NEW'
+								 END AS status
+								 , COALESCE(OrderAccrua.accrual, 0) as accrual
+							     , CASE
+									   WHEN NOT orders."failedAt" ISNULL THEN orders."failedAt"
+									   WHEN NOT orders."finishedAt" ISNULL THEN orders."finishedAt"
+									   WHEN NOT orders."startedAt" ISNULL THEN orders."startedAt"
+									   ELSE orders."createdAt"
+								 END AS uploaded_at
+							     --, orders."userID"
+								 --, orders."createdAt"
+								 --, orders."startedAt"
+								 --, orders."finishedAt"
+								 --, orders."failedAt"	
+							FROM
+								 gofermart.orders AS orders
+							
+							LEFT JOIN (SELECT
+										   oa."Order",
+										   SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN oa."Accrual" * -1 ELSE oa."Accrual" end) AS accrual
+									   FROM
+										   gofermart.order_accrual AS oa
+									   GROUP BY
+										   oa."Order") AS OrderAccrua
+									  ON orders."orderID" = OrderAccrua."Order"
+							
+							WHERE
+									CASE WHEN $1 = '' THEN true ELSE "userID" = $1 END 
+							
+								ORDER BY orders."createdAt";`
 
 	QueryUserBalansTemplate = `SELECT
 									sum(coalesce(OrderAccrua.total, 0)) AS total
@@ -150,10 +107,10 @@ const (
 									gofermart.order_accrual as oa
 									group by
 									oa."Order") as OrderAccrua
-										ON orders."Order" = OrderAccrua."Order"
+										ON orders."orderID" = OrderAccrua."Order"
 									
 								WHERE 
-									gofermart.orders."User" = $1`
+									gofermart.orders."userID" = $1`
 
 	QueryOrderBalansTemplate = `SELECT
 									sum(coalesce(OrderAccrua.total, 0)) AS total
@@ -171,22 +128,22 @@ const (
 									gofermart.order_accrual as oa
 									group by
 									oa."Order") as OrderAccrua
-										ON orders."Order" = OrderAccrua."Order"
+										ON orders."orderID" = OrderAccrua."Order"
 								WHERE	
-									gofermart.orders."User" = $1 
-									and gofermart.orders."Order" = $2;`
+									gofermart.orders."userID" = $1 
+									and gofermart.orders."orderID" = $2;`
 
 	QueryAddOrderTemplate = `INSERT INTO 
-						gofermart.orders ("User", "Order") 
-					VALUES
-						($1, $2);`
+								gofermart.orders ("userID", "orderID", "createdAt") 
+							VALUES
+								($1, $2, $3);`
 	QueryAddStatusTemplate = `INSERT INTO gofermart.order_statuses(
-						"Order", "Status", "DateStasus")
-						VALUES ($1, $2, $3);`
+									"Order", "Status", "DateStasus")
+									VALUES ($1, $2, $3);`
 	QueryAddAccrual = `INSERT INTO gofermart.order_accrual("Order", "Accrual", "DateAccrual", "TypeAccrual")
 							VALUES ($1, $2, $3, $4);`
 	QuerySelectAccrual = `SELECT	
-								gofermart.orders."Order"
+								gofermart.orders."orderID"
 								, coalesce(OrderAccrua."DateAccrual", '-infinity'::timestamp) as DateAccrual
 								, coalesce(OrderAccrua.withdrawn, 0) AS withdrawn
 								, coalesce(OrderAccrua."current", 0) as "current"
@@ -201,14 +158,19 @@ const (
 										from
 											gofermart.order_accrual as oa
 										where oa."TypeAccrual" = $2) as OrderAccrua
-									ON orders."Order" = OrderAccrua."Order"
+									ON orders."orderID" = OrderAccrua."Order"
 							WHERE
-								gofermart.orders."User" = $1
+								gofermart.orders."userID" = $1
 								and not OrderAccrua."DateAccrual" ISNULL;`
 
-	//where CASE when $3 = '' then true else oa."TypeAccrual" = $3 END) as OrderAccrua
-	//CASE when $1 = '' then true else gofermart.orders."User" = $1 END
-	//and CASE when $2 = 0 then true else gofermart.orders."Order" = $2 END;
+	QuerySelectAccrualPLUSS = `SELECT
+									*
+									FROM
+										gofermart.order_accrual as oa	
+									WHERE
+										oa."Order" = $1
+										AND oa."TypeAccrual" = 'PLUS'`
+
 	AccountCookies = "gofermarket_authorization"
 )
 

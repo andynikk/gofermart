@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"context"
+	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"gofermart/internal/token"
 	"math"
@@ -13,32 +14,31 @@ import (
 	"gofermart/internal/cryptography"
 )
 
+type Cfg struct {
+	Token string
+	*pgxpool.Pool
+	Key string `json:"key"`
+}
+
 type User struct {
 	Name     string `json:"login"`
 	Password string `json:"password"`
 }
 
-type Cfg struct {
-	Key string `json:"key"`
-}
-
 type Account struct {
 	User
-	Cfg
-	*pgxpool.Pool
+	*Cfg
 }
 
 type Order struct {
 	Number int
-	Token  string
-	*pgxpool.Pool
+	*Cfg
 }
 
 type OrderWithdraw struct {
 	Order    int     `json:"order"`
 	Withdraw float64 `json:"sum"`
-	Token    string
-	*pgxpool.Pool
+	*Cfg
 }
 
 type orderDB struct {
@@ -59,6 +59,12 @@ type withdrawDB struct {
 	Withdraw    float64   `json:"sum"`
 	DateAccrual time.Time `json:"processed_at" format:"RFC333"`
 	Current     float64   `json:"current,omitempty"`
+}
+
+type ScoringSystem struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float64 `json:"accrual"`
 }
 
 func (a *Account) NewAccount() int {
@@ -149,7 +155,7 @@ func (o *Order) NewOrder() int {
 	if err != nil {
 		return http.StatusInternalServerError
 	}
-	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, o.Number)
+	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], o.Number)
 	if err != nil {
 		conn.Release()
 		return http.StatusBadRequest
@@ -159,18 +165,11 @@ func (o *Order) NewOrder() int {
 	if rows.Next() {
 		return http.StatusConflict
 	}
-	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], o.Number); err != nil {
+	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], o.Number, time.Now()); err != nil {
 		constants.Logger.ErrorLog(err)
 		conn.Release()
 		return http.StatusBadRequest
 	}
-
-	rows, err = conn.Query(ctx, constants.QueryAddStatusTemplate, o.Number, "NEW", time.Now())
-	if err != nil {
-		conn.Release()
-		return http.StatusBadRequest
-	}
-	defer rows.Close()
 	conn.Release()
 
 	return http.StatusOK
@@ -191,7 +190,7 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 		return arrOrders, http.StatusUnauthorized
 	}
 
-	rows, err := conn.Query(ctx, constants.QueryListOrderWhereTemplate, claims["user"])
+	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, claims["user"])
 	if err != nil {
 		conn.Release()
 		return arrOrders, http.StatusBadRequest
@@ -224,7 +223,7 @@ func (o *Order) SetNextStatus() {
 		return
 	}
 
-	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate)
+	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, "")
 	if err != nil {
 		conn.Release()
 		return
@@ -246,12 +245,12 @@ func (o *Order) SetNextStatus() {
 			rand.Seed(time.Now().UnixNano())
 			randStatus := 2 + rand.Intn(3-2+1)
 			if randStatus == 3 {
-				nextStatus = constants.StatusINVALID.String()
+				nextStatus = "failedAt"
 			} else {
-				nextStatus = constants.StatusPROCESSED.String()
+				nextStatus = "finishedAt"
 			}
 		default:
-			nextStatus = constants.StatusPROCESSING.String()
+			nextStatus = "startedAt"
 		}
 		ord.Status = nextStatus
 		arrOrders = append(arrOrders, ord)
@@ -268,14 +267,15 @@ func (o *Order) SetNextStatus() {
 		}
 
 		if _, err = conn.Query(ctx,
-			`INSERT INTO gofermart.order_statuses("Order", "Status", "DateStatus")
-					VALUES ($1, $2, $3);`, &val.Order, &val.Status, time.Now()); err != nil {
+			fmt.Sprintf(`UPDATE gofermart.orders
+					SET "%s"=$2
+					WHERE "orderID"=$1;`, val.Status), &val.Order, time.Now()); err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
 		}
 		conn.Release()
 
-		if val.Status == "PROCESSED" {
+		if val.Status == "finishedAt" {
 			conn, err := o.Pool.Acquire(ctx)
 			if err != nil {
 				return
@@ -415,7 +415,6 @@ func (o *Order) UserAccrual() ([]withdrawDB, int) {
 }
 
 func (ow *OrderWithdraw) TryWithdraw() int {
-	//var arrBalans []balansDB
 
 	ctx := context.Background()
 	conn, err := ow.Pool.Acquire(ctx)
@@ -450,7 +449,6 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 			conn.Release()
 			return http.StatusPaymentRequired
 		}
-		//arrBalans = append(arrBalans, bdb)
 	}
 	conn.Release()
 
@@ -465,6 +463,34 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 	}
 
 	return http.StatusOK
+}
+
+func (cfg *Cfg) ListNotAccrualOrders() ([]orderDB, int) {
+	var arrOrderDB []orderDB
+
+	ctx := context.Background()
+	conn, err := cfg.Pool.Acquire(ctx)
+	if err != nil {
+		return arrOrderDB, http.StatusInternalServerError
+	}
+
+	rows, err := conn.Query(ctx, `SELECT * FROM gofermart.orders AS orders WHERE `+
+		`orders."finishedAt" ISNULL AND orders."failedAt" ISNULL`)
+	for rows.Next() {
+		var ord orderDB
+
+		err = rows.Scan(&ord.Order, &ord.Status, &ord.Accrual)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			continue
+		}
+		if ord.Status == "REGISTERED" {
+			ord.Status = "NEW"
+		}
+		arrOrderDB = append(arrOrderDB, ord)
+	}
+
+	return arrOrderDB, http.StatusOK
 }
 
 func CreateModeLDB(Pool *pgxpool.Pool) {

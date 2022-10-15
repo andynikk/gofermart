@@ -41,6 +41,8 @@ func NewServer(srv *Server) {
 	r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersGET)).Methods("GET")
 	r.Handle("/api/user/balance", token.IsAuthorized(srv.apiUserBalanceGET)).Methods("GET")
 	r.Handle("/api/user/balance/withdrawals", token.IsAuthorized(srv.apiUserWithdrawalsGET)).Methods("GET")
+	r.Handle("/api/user/withdrawals", token.IsAuthorized(srv.apiUserWithdrawalsGET)).Methods("GET")
+
 	r.Handle("/api/orders/{number}", token.IsAuthorized(srv.apiUserAccrualGET)).Methods("GET")
 	//
 	r.HandleFunc("/api/user/orders-next-status", srv.apiNextStatus).Methods("GET")
