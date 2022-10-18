@@ -8,7 +8,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 
-	"gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 type ServerConfigENV struct {

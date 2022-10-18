@@ -4,7 +4,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"fmt"
-	"gofermart/internal/constants"
+
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 func HeshSHA256(data string, strKey string) (hash string) {

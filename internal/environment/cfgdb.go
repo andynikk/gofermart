@@ -2,11 +2,12 @@ package environment
 
 import (
 	"flag"
-	"gofermart/internal/constants"
 	"log"
 	"os"
 
 	"github.com/caarlos0/env/v6"
+
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 type DBConfig struct {

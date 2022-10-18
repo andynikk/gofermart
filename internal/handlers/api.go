@@ -5,9 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/theplant/luhn"
-	"gofermart/internal/token"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,12 +12,16 @@ import (
 	"strings"
 	"time"
 
-	"gofermart/internal/compression"
-	"gofermart/internal/constants"
-	"gofermart/internal/postgresql"
+	"github.com/gorilla/mux"
+	"github.com/theplant/luhn"
+
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/postgresql"
+	"github.com/andynikk/gofermart/internal/token"
 )
 
-//POST
+// POST
 func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	var bodyJSON io.Reader
 	var arrBody []byte
@@ -290,7 +291,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(orderWithdraw.TryWithdraw())
 }
 
-//GET
+// GET
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")

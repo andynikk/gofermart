@@ -5,7 +5,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"net/http"
 
-	"gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 type Claims struct {

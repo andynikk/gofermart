@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gofermart/internal/constants"
-	"gofermart/internal/handlers"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/handlers"
 )
 
 type server struct {

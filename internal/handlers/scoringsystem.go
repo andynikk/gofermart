@@ -9,9 +9,9 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"gofermart/internal/compression"
-	"gofermart/internal/constants"
-	"gofermart/internal/postgresql"
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/postgresql"
 )
 
 func GetScoringSystem(number string) (scoringSystem *postgresql.ScoringSystem, httpStatus int) {

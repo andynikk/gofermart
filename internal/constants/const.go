@@ -1,8 +1,9 @@
 package constants
 
 import (
-	"gofermart/internal/logger"
 	"time"
+
+	"github.com/andynikk/gofermart/internal/logger"
 )
 
 type Statuses int

@@ -3,17 +3,17 @@ package handlers
 import (
 	"bytes"
 	"fmt"
-	"gofermart/internal/token"
 	"net/http"
 	"strings"
 
 	"github.com/gorilla/mux"
 
-	"gofermart/internal/compression"
-	"gofermart/internal/constants"
-	"gofermart/internal/environment"
-	"gofermart/internal/postgresql"
-	"gofermart/internal/web"
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/environment"
+	"github.com/andynikk/gofermart/internal/postgresql"
+	"github.com/andynikk/gofermart/internal/token"
+	"github.com/andynikk/gofermart/internal/web"
 )
 
 //var mySigningKey = []byte("johenews")

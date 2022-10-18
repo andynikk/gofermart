@@ -3,15 +3,16 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"gofermart/internal/token"
 	"math"
 	"math/rand"
 	"net/http"
 	"time"
 
-	"gofermart/internal/constants"
-	"gofermart/internal/cryptography"
+	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/cryptography"
+	"github.com/andynikk/gofermart/internal/token"
 )
 
 type Cfg struct {
@@ -506,35 +507,18 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 	}
 
 	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.order_accrual
-									(
-										"Accrual" numeric,
-										"DateAccrual" timestamp with time zone,
-										"TypeAccrual" character varying(10) COLLATE pg_catalog."default",
-										"Order" numeric
-									)
-									
-									TABLESPACE pg_default;
-									
-									ALTER TABLE IF EXISTS gofermart.order_accrual
-										OWNER to postgres;`)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		conn.Release()
-		return
-	}
-
-	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.order_statuses
-									(
-										"Order" numeric,
-										"Status" character varying(150) COLLATE pg_catalog."default",
-										"DateStatus" timestamp with time zone
-									)
-									
-									TABLESPACE pg_default;
-									
-									ALTER TABLE IF EXISTS gofermart.order_statuses
-										OWNER to postgres;`)
-
+								(
+									"Accrual" numeric,
+									"DateAccrual" timestamp with time zone,
+									"TypeAccrual" character varying(10) COLLATE pg_catalog."default",
+									"Order" numeric
+								)
+								
+								TABLESPACE pg_default;
+								
+								ALTER TABLE IF EXISTS gofermart.order_accrual
+									OWNER to postgres;
+`)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		conn.Release()
@@ -542,15 +526,19 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 	}
 
 	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.orders
-									(
-										"User" character varying(150) COLLATE pg_catalog."default" NOT NULL,
-										"Order" numeric NOT NULL
-									)
-									
-									TABLESPACE pg_default;
-									
-									ALTER TABLE IF EXISTS gofermart.orders
-										OWNER to postgres;`)
+								(
+									"userID" character(150) COLLATE pg_catalog."default" NOT NULL,
+									"orderID" numeric,
+									"createdAt" timestamp with time zone,
+									"startedAt" timestamp with time zone,
+									"finishedAt" timestamp with time zone,
+									"failedAt" timestamp with time zone
+								)
+								
+								TABLESPACE pg_default;
+								
+								ALTER TABLE IF EXISTS gofermart.orders
+									OWNER to postgres;`)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		conn.Release()

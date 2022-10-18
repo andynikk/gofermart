@@ -1,4 +1,4 @@
-module gofermart
+module github.com/andynikk/gofermart
 
 go 1.18
 

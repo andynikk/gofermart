@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"gofermart/internal/environment"
+	"github.com/andynikk/gofermart/internal/environment"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )

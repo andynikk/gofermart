@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"gofermart/internal/compression"
-	"gofermart/internal/constants"
-	"gofermart/internal/web"
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/web"
 )
 
 func (srv *Server) UserRegisterGET(rw http.ResponseWriter, rq *http.Request) {
