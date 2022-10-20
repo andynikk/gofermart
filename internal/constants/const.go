@@ -14,7 +14,8 @@ const (
 	StatusINVALID
 	StatusPROCESSED
 
-	PortServer = ":8080"
+	PortServer      = "localhost:8080"
+	PortAcSysServer = "localhost:8000"
 
 	QuerySelectUserWithWhereTemplate = `SELECT 
 						* 
@@ -157,6 +158,7 @@ const (
 										, CASE when oa."TypeAccrual" = 'MINUS' then oa."Accrual" else 0 END as withdrawn
 										, CASE when oa."TypeAccrual" = 'MINUS' then 0 else oa."Accrual" END as "current"
 										from
+										from
 											gofermart.order_accrual as oa
 										where oa."TypeAccrual" = $2) as OrderAccrua
 									ON orders."orderID" = OrderAccrua."Order"
@@ -180,5 +182,5 @@ func (s Statuses) String() string {
 }
 
 var HashKey = []byte("taekwondo")
-var TimeLiveToken = time.Now().Add(time.Minute * 5).Unix()
+var TimeLiveToken = time.Now().Add(time.Hour * 5).Unix()
 var Logger logger.Logger

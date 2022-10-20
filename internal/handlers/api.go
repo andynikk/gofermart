@@ -2,15 +2,12 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
@@ -31,7 +28,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	bodyJSON = r.Body
 	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
+		bytBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
@@ -49,7 +46,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("---------2")
-	respByte, err := ioutil.ReadAll(bodyJSON)
+	respByte, err := io.ReadAll(bodyJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
@@ -57,6 +54,8 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("---------3")
 	newAccount := new(postgresql.Account)
+	newAccount.Cfg = new(postgresql.Cfg)
+
 	newAccount.Pool = srv.Pool
 	if err := json.Unmarshal(respByte, &newAccount.User); err != nil {
 		constants.Logger.ErrorLog(err)
@@ -72,23 +71,17 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("---------5")
 	rez := newAccount.NewAccount()
 	w.WriteHeader(rez)
-	fmt.Println("---------6")
+
+	tokenString := ""
 	if rez == http.StatusOK {
-		fmt.Println("---------7")
 		if err := tx.Commit(srv.Context.Ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
 
-		tokenString := ""
 		ct := token.Claims{Authorized: true, User: newAccount.Name, Exp: constants.TimeLiveToken}
 		if tokenString, err = ct.GenerateJWT(); err != nil {
-			constants.Logger.ErrorLog(err)
-		}
-		_, err = w.Write([]byte(tokenString))
-		if err != nil {
 			constants.Logger.ErrorLog(err)
 		}
 	} else {
@@ -98,21 +91,11 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	fmt.Println("---------9")
-	tokenString := ""
-	tc := token.Claims{Authorized: true, User: newAccount.Name, Exp: constants.TimeLiveToken}
-	if tokenString, err = tc.GenerateJWT(); err != nil {
-		constants.Logger.ErrorLog(err)
-	}
-
-	w.Header().Add("Authorization", tokenString)
-	r.Header.Add("Authorization", tokenString)
 
 	_, err = w.Write([]byte(tokenString))
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
-	fmt.Println("---------10")
 }
 
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +107,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 	bodyJSON = r.Body
 	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
+		bytBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
@@ -141,13 +124,15 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 		bodyJSON = bytes.NewReader(arrBody)
 	}
 
-	respByte, err := ioutil.ReadAll(bodyJSON)
+	respByte, err := io.ReadAll(bodyJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
 	}
 
 	Account := new(postgresql.Account)
+	Account.Cfg = new(postgresql.Cfg)
+
 	Account.Pool = srv.Pool
 	if err := json.Unmarshal(respByte, &Account.User); err != nil {
 		constants.Logger.ErrorLog(err)
@@ -184,7 +169,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 	bodyJSON = r.Body
 	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
+		bytBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
@@ -201,7 +186,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		bodyJSON = bytes.NewReader(arrBody)
 	}
 
-	respByte, err := ioutil.ReadAll(bodyJSON)
+	respByte, err := io.ReadAll(bodyJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Error get value", http.StatusInternalServerError)
@@ -220,6 +205,8 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	order := new(postgresql.Order)
+	order.Cfg = new(postgresql.Cfg)
+
 	order.Number = numOrder
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
@@ -254,7 +241,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 
 	bodyJSON = r.Body
 	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
+		bytBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
@@ -271,13 +258,15 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 		bodyJSON = bytes.NewReader(arrBody)
 	}
 
-	respByte, err := ioutil.ReadAll(bodyJSON)
+	respByte, err := io.ReadAll(bodyJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
 	}
 
 	orderWithdraw := new(postgresql.OrderWithdraw)
+	orderWithdraw.Cfg = new(postgresql.Cfg)
+
 	orderWithdraw.Pool = srv.Pool
 	if err := json.Unmarshal(respByte, &orderWithdraw); err != nil {
 		constants.Logger.ErrorLog(err)
@@ -297,6 +286,8 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	order := new(postgresql.Order)
+	order.Cfg = new(postgresql.Cfg)
+
 	order.Number = 0
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
@@ -328,6 +319,8 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
 
 	order := new(postgresql.Order)
+	order.Cfg = new(postgresql.Cfg)
+
 	order.Number = 0
 	order.Pool = srv.Pool
 
@@ -345,6 +338,8 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	order := new(postgresql.Order)
+	order.Cfg = new(postgresql.Cfg)
+
 	order.Number = 0
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
@@ -379,6 +374,8 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 
 	order := new(postgresql.Order)
+	order.Cfg = new(postgresql.Cfg)
+
 	order.Number = 0
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
@@ -410,7 +407,6 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 
 	number := mux.Vars(r)["number"]
-	w.WriteHeader(http.StatusOK)
 
 	cfg := new(postgresql.Cfg)
 	cfg.Pool = srv.Pool
@@ -419,135 +415,27 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 		cfg.Token = r.Header["Authorization"][0]
 	}
 
-	scoringSystem, httpStatus := GetScoringSystem(number)
-	if httpStatus != http.StatusOK {
-		w.WriteHeader(httpStatus)
-		return
-	}
-	order, err := strconv.Atoi(scoringSystem.Order)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		w.WriteHeader(httpStatus)
-		return
-	}
+	data := make(chan *postgresql.FullScoringSystem)
+	go srv.ScoringSystem(number, data)
 
-	//ctx := srv.Context.Ctx
-	ctx := context.Background()
-	conn, err := srv.Pool.Acquire(ctx)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	fullScoringSystem := srv.executFSS(data)
+	close(data)
 
-	rows, err := conn.Query(ctx, constants.QuerySelectAccrualPLUSS, order)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-	}
-	if rows.Next() {
-		w.WriteHeader(http.StatusConflict)
-		return
-	}
-	conn.Release()
-
-	tx, err := srv.Pool.Begin(ctx)
-
-	conn, err = srv.Pool.Acquire(ctx)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = tx.Rollback(ctx)
-		return
-	}
-	defer conn.Release()
-
-	if _, err = conn.Query(ctx, constants.QueryAddAccrual, order, scoringSystem.Accrual, time.Now(), "PLUS"); err != nil {
-		_ = tx.Rollback(ctx)
-		w.WriteHeader(http.StatusInternalServerError)
-		constants.Logger.ErrorLog(err)
-		return
-	}
-
-	nameColum := ""
-	switch scoringSystem.Status {
-	case "REGISTERED":
-		nameColum = "createdAt"
-	case "INVALID":
-		nameColum = "failedAt"
-	case "PROCESSING":
-		nameColum = "startedAt"
-	case "PROCESSED":
-		nameColum = "finishedAt"
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	conn, err = srv.Pool.Acquire(ctx)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer conn.Release()
-	rows, err = conn.Query(ctx,
-		fmt.Sprintf(`SELECT * FROM gofermart.orders AS orders
-							WHERE "orderID"=$1 and "%s" ISNULL;`, nameColum), order)
-	defer rows.Close()
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_ = tx.Rollback(ctx)
-		constants.Logger.ErrorLog(err)
-		return
-	}
-	if rows.Next() {
-		_ = tx.Rollback(ctx)
-		return
-	}
-
-	if _, err = conn.Query(ctx,
-		fmt.Sprintf(`UPDATE gofermart.orders
-					SET "%s"=$2
-					WHERE "orderID"=$1;`, nameColum), order, time.Now()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		constants.Logger.ErrorLog(err)
-		_ = tx.Rollback(ctx)
-		return
-	}
-	conn.Release()
-	_ = tx.Commit(ctx)
-
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(fullScoringSystem.HttpStatus)
 }
 
-func (srv *Server) SetUserAccrualGET(w http.ResponseWriter, r *http.Request) {
+func (srv *Server) executFSS(data chan *postgresql.FullScoringSystem) (fullScoringSystem *postgresql.FullScoringSystem) {
+	for {
+		select {
+		case <-data:
+			fullScoringSystem := <-data
+			srv.SetValueScoringSystem(fullScoringSystem)
+			return fullScoringSystem
 
-	cfg := new(postgresql.Cfg)
-	cfg.Pool = srv.Pool
-	cfg.Key = srv.Cfg.Key
-	if r.Header["Authorization"] != nil {
-		cfg.Token = r.Header["Authorization"][0]
-	}
-
-	arrListOrders, httpStatus := cfg.ListNotAccrualOrders()
-	if httpStatus != http.StatusOK {
-		w.WriteHeader(httpStatus)
-		return
-	}
-
-	for _, val := range arrListOrders {
-		scoringSystem, httpStatus := GetScoringSystem(strconv.Itoa(val.Order))
-		if httpStatus != http.StatusOK {
-			w.WriteHeader(httpStatus)
-			return
+			//fullScoringSystem := <-data
+			//srv.SetValueScoringSystem(<-data)
+			//return <-data
+			//return fullScoringSystem
 		}
-
-		orderWithdraw := new(postgresql.OrderWithdraw)
-		orderWithdraw.Pool = srv.Pool
-		if r.Header["Authorization"] != nil {
-			orderWithdraw.Token = r.Header["Authorization"][0]
-		}
-		orderWithdraw.Withdraw = scoringSystem.Accrual
-		orderWithdraw.Order = val.Order
-
-		w.WriteHeader(orderWithdraw.TryWithdraw())
 	}
 }

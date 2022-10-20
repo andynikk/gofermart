@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/andynikk/gofermart/internal/environment"
-
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/andynikk/gofermart/internal/environment"
 )
 
 type Context struct {

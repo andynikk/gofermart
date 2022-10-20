@@ -2,8 +2,9 @@ package token
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt/v4"
 	"net/http"
+
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/andynikk/gofermart/internal/constants"
 )

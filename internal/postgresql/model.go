@@ -62,6 +62,11 @@ type withdrawDB struct {
 	Current     float64   `json:"current,omitempty"`
 }
 
+type FullScoringSystem struct {
+	ScoringSystem *ScoringSystem
+	HttpStatus    int
+}
+
 type ScoringSystem struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`

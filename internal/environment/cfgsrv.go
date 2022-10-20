@@ -12,17 +12,20 @@ import (
 )
 
 type ServerConfigENV struct {
-	Address string `env:"ADDRESS" envDefault:"localhost:8080"`
+	Address      string `env:"ADDRESS" envDefault:"localhost:8080"`
+	AcSysAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"localhost:8000"`
 }
 
 type ServerConfig struct {
-	Address string
+	Address      string
+	AddressAcSys string
 }
 
 func (sc *ServerConfig) SetConfigServer() {
 
 	fmt.Println("********1")
 	addressPtr := flag.String("a", constants.PortServer, "порт сервера")
+	addressAcSysPtr := flag.String("r", constants.PortAcSysServer, "сервер системы балов")
 	flag.Parse()
 
 	fmt.Println("********2")
@@ -32,11 +35,16 @@ func (sc *ServerConfig) SetConfigServer() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("********3")
-	databaseDsn := cfgENV.Address
-	if _, ok := os.LookupEnv("DATABASE_DSN"); !ok {
-		databaseDsn = *addressPtr
+	adresServer := cfgENV.Address
+	if _, ok := os.LookupEnv("ADDRESS"); !ok {
+		adresServer = *addressPtr
 	}
 
-	sc.Address = databaseDsn
+	addressAcSysServer := cfgENV.AcSysAddress
+	if _, ok := os.LookupEnv("ACCRUAL_SYSTEM_ADDRESS"); !ok {
+		addressAcSysServer = *addressAcSysPtr
+	}
+
+	sc.Address = adresServer
+	sc.AddressAcSys = addressAcSysServer
 }

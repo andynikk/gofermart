@@ -16,7 +16,7 @@ type server struct {
 }
 
 func main() {
-	fmt.Println("/////////////////", 11-1)
+	fmt.Println("/////////////////", 11.1)
 	server := new(server)
 	fmt.Println("/////////////////", 2)
 	handlers.NewServer(&server.Server)
