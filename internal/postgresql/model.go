@@ -64,7 +64,7 @@ type withdrawDB struct {
 
 type FullScoringSystem struct {
 	ScoringSystem *ScoringSystem
-	HttpStatus    int
+	HTTPStatus    int
 }
 
 type ScoringSystem struct {
@@ -482,6 +482,10 @@ func (cfg *Cfg) ListNotAccrualOrders() ([]orderDB, int) {
 
 	rows, err := conn.Query(ctx, `SELECT * FROM gofermart.orders AS orders WHERE `+
 		`orders."finishedAt" ISNULL AND orders."failedAt" ISNULL`)
+	if err != nil {
+		return arrOrderDB, http.StatusInternalServerError
+	}
+
 	for rows.Next() {
 		var ord orderDB
 

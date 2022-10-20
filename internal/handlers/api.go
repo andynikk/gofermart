@@ -408,12 +408,12 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 
 	number := mux.Vars(r)["number"]
 
-	cfg := new(postgresql.Cfg)
-	cfg.Pool = srv.Pool
-	cfg.Key = srv.Cfg.Key
-	if r.Header["Authorization"] != nil {
-		cfg.Token = r.Header["Authorization"][0]
-	}
+	//cfg := new(postgresql.Cfg)
+	//cfg.Pool = srv.Pool
+	//cfg.Key = srv.Cfg.Key
+	//if r.Header["Authorization"] != nil {
+	//	cfg.Token = r.Header["Authorization"][0]
+	//}
 
 	data := make(chan *postgresql.FullScoringSystem)
 	go srv.ScoringSystem(number, data)
@@ -421,7 +421,7 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	fullScoringSystem := srv.executFSS(data)
 	close(data)
 
-	w.WriteHeader(fullScoringSystem.HttpStatus)
+	w.WriteHeader(fullScoringSystem.HTTPStatus)
 }
 
 func (srv *Server) executFSS(data chan *postgresql.FullScoringSystem) (fullScoringSystem *postgresql.FullScoringSystem) {

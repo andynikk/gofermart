@@ -32,7 +32,7 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 			return
 		default:
 			fullScoringSystem := srv.GetScoringSystem(number)
-			if fullScoringSystem.HttpStatus != http.StatusTooManyRequests {
+			if fullScoringSystem.HTTPStatus != http.StatusTooManyRequests {
 				data <- fullScoringSystem
 			}
 			time.Sleep(1 * time.Second)
@@ -77,22 +77,28 @@ func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresq
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 
-			fullScoringSystem.HttpStatus = http.StatusInternalServerError
+			fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 			return fullScoringSystem
 		}
 
 		arrBody, err := compression.Decompress(bytBody)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+
+			fullScoringSystem.HTTPStatus = http.StatusInternalServerError
+			return fullScoringSystem
+		}
 		fmt.Println(arrBody)
 	}
 
 	if err := json.NewDecoder(bodyJSON).Decode(&scoringSystem); err != nil {
 		constants.Logger.InfoLog(fmt.Sprintf("$$ 3 %s", err.Error()))
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		return fullScoringSystem
 	}
 
 	fullScoringSystem.ScoringSystem = scoringSystem
-	fullScoringSystem.HttpStatus = http.StatusOK
+	fullScoringSystem.HTTPStatus = http.StatusOK
 	return fullScoringSystem
 }
 
@@ -108,7 +114,7 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 	conn, err := srv.Pool.Acquire(ctx)
 	fmt.Println("-----3")
 	if err != nil {
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		return
 	}
 	defer conn.Release()
@@ -118,16 +124,20 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 		constants.Logger.ErrorLog(err)
 	}
 	if rows.Next() {
-		fullScoringSystem.HttpStatus = http.StatusConflict
+		fullScoringSystem.HTTPStatus = http.StatusConflict
 		return
 	}
 	conn.Release()
 
 	tx, err := srv.Pool.Begin(ctx)
+	if err != nil {
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
+		return
+	}
 
 	conn, err = srv.Pool.Acquire(ctx)
 	if err != nil {
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		_ = tx.Rollback(ctx)
 		return
 	}
@@ -137,7 +147,7 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 		order, fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS"); err != nil {
 
 		_ = tx.Rollback(ctx)
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		constants.Logger.ErrorLog(err)
 		return
 	}
@@ -153,27 +163,27 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 	case "PROCESSED":
 		nameColum = "finishedAt"
 	default:
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		return
 	}
 
 	conn, err = srv.Pool.Acquire(ctx)
 	if err != nil {
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		return
 	}
 	defer conn.Release()
 	rows, err = conn.Query(ctx,
 		fmt.Sprintf(`SELECT * FROM gofermart.orders AS orders
 							WHERE "orderID"=$1 and "%s" ISNULL;`, nameColum), order)
-	defer rows.Close()
-
 	if err != nil {
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		_ = tx.Rollback(ctx)
 		constants.Logger.ErrorLog(err)
 		return
 	}
+	defer rows.Close()
+
 	if rows.Next() {
 		_ = tx.Rollback(ctx)
 		return
@@ -183,7 +193,7 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 		fmt.Sprintf(`UPDATE gofermart.orders
 					SET "%s"=$2
 					WHERE "orderID"=$1;`, nameColum), order, time.Now()); err != nil {
-		fullScoringSystem.HttpStatus = http.StatusInternalServerError
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		constants.Logger.ErrorLog(err)
 		_ = tx.Rollback(ctx)
 		return
@@ -191,5 +201,5 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 	conn.Release()
 	_ = tx.Commit(ctx)
 
-	fullScoringSystem.HttpStatus = http.StatusOK
+	fullScoringSystem.HTTPStatus = http.StatusOK
 }
