@@ -436,6 +436,8 @@ func (srv *Server) executFSS(data chan *postgresql.FullScoringSystem) (fullScori
 			//srv.SetValueScoringSystem(<-data)
 			//return <-data
 			//return fullScoringSystem
+		default:
+			fmt.Println(0)
 		}
 	}
 }
