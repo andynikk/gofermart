@@ -95,6 +95,9 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Authorization", tokenString)
 	r.Header.Set("Authorization", tokenString)
 
+	w.Header().Set("Set-Cookie", tokenString)
+	r.Header.Set("Set-Cookie", tokenString)
+
 	_, err = w.Write([]byte(tokenString))
 	if err != nil {
 		constants.Logger.ErrorLog(err)
