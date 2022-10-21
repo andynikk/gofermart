@@ -169,7 +169,7 @@ func (o *Order) NewOrder() int {
 	defer rows.Close()
 
 	if rows.Next() {
-		return http.StatusConflict
+		return http.StatusOK
 	}
 	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], o.Number, time.Now()); err != nil {
 		constants.Logger.ErrorLog(err)
@@ -178,7 +178,7 @@ func (o *Order) NewOrder() int {
 	}
 	conn.Release()
 
-	return http.StatusOK
+	return http.StatusAccepted
 }
 
 func (o *Order) ListOrder() ([]orderDB, int) {
