@@ -16,7 +16,7 @@ type DBConfig struct {
 }
 
 type DBConfigENV struct {
-	DatabaseDsn string `env:"DATABASE_DSN"`
+	DatabaseDsn string `env:"DATABASE_URI"`
 	Key         string `env:"KEY"`
 }
 
@@ -33,7 +33,7 @@ func (dbc *DBConfig) SetConfigDB() {
 	}
 
 	databaseDsn := cfgENV.DatabaseDsn
-	if _, ok := os.LookupEnv("DATABASE_DSN"); !ok {
+	if _, ok := os.LookupEnv("DATABASE_URI"); !ok {
 		databaseDsn = *keyDatabaseDsn
 	}
 
