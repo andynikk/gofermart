@@ -278,9 +278,6 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 
 // GET
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Content-Type", "application/json")
-
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
 
@@ -303,9 +300,14 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
 	if err != nil {
 		constants.Logger.ErrorLog(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+
 	_, err = w.Write(listOrderJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
