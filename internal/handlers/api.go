@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
@@ -204,7 +203,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
 
-	order.Number = numOrder
+	order.Number = strconv.Itoa(numOrder)
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
 		order.Token = r.Header["Authorization"][0]
@@ -277,63 +276,39 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(orderWithdraw.TryWithdraw())
 }
 
-type orderDB struct {
-	Order      string    `json:"number"`
-	Status     string    `json:"status"`
-	Accrual    float64   `json:"accrual,omitempty"`
-	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
-}
-
 // GET
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	fmt.Println("++++++++++++++1")
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
-	fmt.Println("++++++++++++++2")
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
 		order.Token = r.Header["Authorization"][0]
 	}
-	fmt.Println("++++++++++++++3")
 	listOrder, status := order.ListOrder()
 
-	//var listOrder []orderDB
-	//orderDB := orderDB{
-	//	Order:      "258978",
-	//	Status:     "NEW",
-	//	Accrual:    45.55,
-	//	UploadedAt: time.Now(),
-	//}
-	//listOrder = append(listOrder, orderDB)
-	//status := http.StatusOK
-
 	if status != http.StatusOK {
-		//_, err := w.Write([]byte(""))
-		//if err != nil {
-		//	constants.Logger.ErrorLog(err)
-		//}
+		_, err := w.Write([]byte(""))
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+		}
 
 		w.WriteHeader(status)
 		return
 	}
-	fmt.Println("++++++++++++++4")
 
 	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
-	fmt.Println("++++++++++++++5")
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("++++++++++++++6")
 	_, err = w.Write(listOrderJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
-	fmt.Println("++++++++++++++7")
 
 	w.WriteHeader(status)
 }
@@ -343,7 +318,6 @@ func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
 
-	order.Number = 0
 	order.Pool = srv.Pool
 
 	order.SetNextStatus()
@@ -362,7 +336,6 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
 
-	order.Number = 0
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
 		order.Token = r.Header["Authorization"][0]
@@ -398,7 +371,6 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
 
-	order.Number = 0
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
 		order.Token = r.Header["Authorization"][0]

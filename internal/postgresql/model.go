@@ -32,12 +32,12 @@ type Account struct {
 }
 
 type Order struct {
-	Number int
+	Number string
 	*Cfg
 }
 
 type OrderWithdraw struct {
-	Order    int     `json:"order"`
+	Order    string  `json:"order"`
 	Withdraw float64 `json:"sum"`
 	*Cfg
 }
@@ -49,7 +49,7 @@ type orderDB struct {
 	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
 }
 
-type balansDB struct {
+type BalansDB struct {
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 	Total     float64 `json:"total"`
@@ -309,9 +309,8 @@ func (o *Order) SetNextStatus() {
 	}
 }
 
-func (o *Order) BalansOrders() (balansDB, int) {
-	var bdb balansDB
-
+func (o *Order) BalansOrders() (BalansDB, int) {
+	var bdb BalansDB
 	ctx := context.Background()
 	conn, err := o.Pool.Acquire(ctx)
 	if err != nil {
@@ -451,7 +450,7 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 
 	sumWithdraw := ow.Withdraw
 	for rows.Next() {
-		var bdb balansDB
+		var bdb BalansDB
 
 		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {

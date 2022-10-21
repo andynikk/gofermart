@@ -157,8 +157,7 @@ const (
 										,oa."DateAccrual"
 										, CASE when oa."TypeAccrual" = 'MINUS' then oa."Accrual" else 0 END as withdrawn
 										, CASE when oa."TypeAccrual" = 'MINUS' then 0 else oa."Accrual" END as "current"
-										from
-										from
+										from	
 											gofermart.order_accrual as oa
 										where oa."TypeAccrual" = $2) as OrderAccrua
 									ON orders."orderID" = OrderAccrua."Order"
