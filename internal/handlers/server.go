@@ -45,7 +45,7 @@ func NewServer(srv *Server) {
 
 	r.Handle("/api/orders/{number}", token.IsAuthorized(srv.apiUserAccrualGET)).Methods("GET")
 	//
-	r.HandleFunc("/api/user/orders-next-status", srv.apiNextStatus).Methods("GET")
+	//r.HandleFunc("/api/user/orders-next-status", srv.apiNextStatus).Methods("GET")
 
 	//POST
 	r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersPOST)).Methods("POST")
