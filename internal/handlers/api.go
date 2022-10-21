@@ -279,43 +279,45 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 // GET
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
-	//fmt.Println("++++++++++++++1")
-	//order := new(postgresql.Order)
-	//order.Cfg = new(postgresql.Cfg)
-	//fmt.Println("++++++++++++++2")
-	//order.Number = 0
-	//order.Pool = srv.Pool
-	//if r.Header["Authorization"] != nil {
-	//	order.Token = r.Header["Authorization"][0]
-	//}
-	//fmt.Println("++++++++++++++3")
-	//listOrder, status := order.ListOrder()
-	//if status != http.StatusOK {
-	//	w.WriteHeader(status)
-	//	_, err := w.Write([]byte(""))
-	//	if err != nil {
-	//		constants.Logger.ErrorLog(err)
-	//	}
-	//	return
-	//}
-	//fmt.Println("++++++++++++++4")
-	//
-	//listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
-	//fmt.Println("++++++++++++++5")
-	//if err != nil {
-	//	constants.Logger.ErrorLog(err)
-	//	w.WriteHeader(http.StatusInternalServerError)
-	//	return
-	//}
-	//w.WriteHeader(status)
-	//fmt.Println("++++++++++++++6")
-	//_, err = w.Write(listOrderJSON)
-	//if err != nil {
-	//	constants.Logger.ErrorLog(err)
-	//}
-	//fmt.Println("++++++++++++++7")
+	fmt.Println("++++++++++++++1")
+	order := new(postgresql.Order)
+	order.Cfg = new(postgresql.Cfg)
+	fmt.Println("++++++++++++++2")
+	order.Number = 0
+	order.Pool = srv.Pool
+	if r.Header["Authorization"] != nil {
+		order.Token = r.Header["Authorization"][0]
+	}
+	fmt.Println("++++++++++++++3")
+	listOrder, status := order.ListOrder()
+	if status != http.StatusOK {
+		//_, err := w.Write([]byte(""))
+		//if err != nil {
+		//	constants.Logger.ErrorLog(err)
+		//}
+
+		w.WriteHeader(status)
+		return
+	}
+	fmt.Println("++++++++++++++4")
+
+	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
+	fmt.Println("++++++++++++++5")
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Println("++++++++++++++6")
+	_, err = w.Write(listOrderJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
+	fmt.Println("++++++++++++++7")
+
+	w.WriteHeader(status)
 }
 
 func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
