@@ -43,7 +43,7 @@ type OrderWithdraw struct {
 }
 
 type orderDB struct {
-	Order      string    `json:"number"`
+	Number     string    `json:"number"`
 	Status     string    `json:"status"`
 	Accrual    float64   `json:"accrual,omitempty"`
 	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
@@ -205,7 +205,7 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 	for rows.Next() {
 		var ord orderDB
 
-		err = rows.Scan(&ord.Order, &ord.Status, &ord.Accrual, &ord.UploadedAt)
+		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual, &ord.UploadedAt)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
@@ -239,7 +239,7 @@ func (o *Order) SetNextStatus() {
 	for rows.Next() {
 		var ord orderDB
 
-		err = rows.Scan(&ord.Order, &ord.Status, &ord.Accrual, &ord.UploadedAt)
+		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual, &ord.UploadedAt)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
@@ -275,7 +275,7 @@ func (o *Order) SetNextStatus() {
 		if _, err = conn.Query(ctx,
 			fmt.Sprintf(`UPDATE gofermart.orders
 					SET "%s"=$2
-					WHERE "orderID"=$1;`, val.Status), &val.Order, time.Now()); err != nil {
+					WHERE "orderID"=$1;`, val.Status), &val.Number, time.Now()); err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
 		}
@@ -289,7 +289,7 @@ func (o *Order) SetNextStatus() {
 
 			randVal := min + rand.Float64()*(max-min)
 			accrual := math.Ceil(randVal*100) / 100
-			if _, err = conn.Query(ctx, constants.QueryAddAccrual, &val.Order, accrual, time.Now(), "PLUS"); err != nil {
+			if _, err = conn.Query(ctx, constants.QueryAddAccrual, &val.Number, accrual, time.Now(), "PLUS"); err != nil {
 				constants.Logger.ErrorLog(err)
 				continue
 			}
@@ -489,7 +489,7 @@ func (cfg *Cfg) ListNotAccrualOrders() ([]orderDB, int) {
 	for rows.Next() {
 		var ord orderDB
 
-		err = rows.Scan(&ord.Order, &ord.Status, &ord.Accrual)
+		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue

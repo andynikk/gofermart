@@ -292,7 +292,6 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	order := new(postgresql.Order)
 	order.Cfg = new(postgresql.Cfg)
 	fmt.Println("++++++++++++++2")
-	order.Number = 0
 	order.Pool = srv.Pool
 	if r.Header["Authorization"] != nil {
 		order.Token = r.Header["Authorization"][0]
