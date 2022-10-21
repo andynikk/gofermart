@@ -43,7 +43,7 @@ type OrderWithdraw struct {
 }
 
 type orderDB struct {
-	Order      int       `json:"number"`
+	Order      string    `json:"number"`
 	Status     string    `json:"status"`
 	Accrual    float64   `json:"accrual,omitempty"`
 	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
