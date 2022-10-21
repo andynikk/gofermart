@@ -44,12 +44,12 @@ func NewServer(srv *Server) {
 	r.Handle("/api/user/withdrawals", token.IsAuthorized(srv.apiUserWithdrawalsGET)).Methods("GET")
 
 	r.Handle("/api/orders/{number}", token.IsAuthorized(srv.apiUserAccrualGET)).Methods("GET")
-	//
-	//r.HandleFunc("/api/user/orders-next-status", srv.apiNextStatus).Methods("GET")
+
+	r.HandleFunc("/api/user/orders-next-status", srv.apiNextStatus).Methods("GET")
 
 	//POST
-	//r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersPOST)).Methods("POST")
-	//r.Handle("/api/user/balance/withdraw", token.IsAuthorized(srv.apiUserWithdrawPOST)).Methods("POST")
+	r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersPOST)).Methods("POST")
+	r.Handle("/api/user/balance/withdraw", token.IsAuthorized(srv.apiUserWithdrawPOST)).Methods("POST")
 
 	//POST Handle Func
 	r.HandleFunc("/api/user/register", srv.apiUserRegisterPOST).Methods("POST")
