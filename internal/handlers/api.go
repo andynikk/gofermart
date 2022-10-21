@@ -72,7 +72,6 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rez := newAccount.NewAccount()
-	w.WriteHeader(rez)
 
 	tokenString := ""
 	if rez == http.StatusOK {
@@ -89,19 +88,13 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		if err := tx.Rollback(srv.Context.Ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
+		w.WriteHeader(rez)
 		return
 	}
 
 	w.Header().Add("Authorization", tokenString)
-	r.Header.Add("Authorization", tokenString)
-
-	w.Header().Add("Set-Cookie", tokenString)
-	r.Header.Add("Set-Cookie", tokenString)
-
-	_, err = w.Write([]byte(tokenString))
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-	}
+	//w.Header().Add("Set-Cookie", tokenString)
+	w.WriteHeader(rez)
 }
 
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
@@ -147,9 +140,9 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	Account.Key = srv.Cfg.Key
 
 	rez := Account.GetAccount()
-	w.WriteHeader(rez)
 
 	if rez != http.StatusOK {
+		w.WriteHeader(rez)
 		return
 	}
 
@@ -158,13 +151,10 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	if tokenString, err = tc.GenerateJWT(); err != nil {
 		constants.Logger.ErrorLog(err)
 	}
-	w.Header().Add("Authorization", tokenString)
-	r.Header.Add("Authorization", tokenString)
 
-	_, err = w.Write([]byte(tokenString))
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-	}
+	w.Header().Add("Authorization", tokenString)
+	//w.Header().Add("Set-Cookie", tokenString)
+	w.WriteHeader(rez)
 }
 
 func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
