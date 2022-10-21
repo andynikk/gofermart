@@ -162,14 +162,19 @@ func (o *Order) NewOrder() int {
 		return http.StatusInternalServerError
 	}
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], o.Number)
+	conn.Release()
 	if err != nil {
-		conn.Release()
 		return http.StatusBadRequest
 	}
 	defer rows.Close()
 
 	if rows.Next() {
 		return http.StatusOK
+	}
+
+	conn, err = o.Pool.Acquire(ctx)
+	if err != nil {
+		return http.StatusInternalServerError
 	}
 	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], o.Number, time.Now()); err != nil {
 		constants.Logger.ErrorLog(err)
@@ -185,23 +190,23 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 	var arrOrders []orderDB
 
 	ctx := context.Background()
-	conn, err := o.Pool.Acquire(ctx)
-	if err != nil {
-		return arrOrders, http.StatusInternalServerError
-	}
-
 	claims, ok := token.ExtractClaims(o.Token)
 	if !ok {
 		constants.Logger.InfoLog("error extract claims")
 		return arrOrders, http.StatusUnauthorized
 	}
 
-	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, claims["user"])
+	conn, err := o.Pool.Acquire(ctx)
 	if err != nil {
-		conn.Release()
+		return arrOrders, http.StatusInternalServerError
+	}
+	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, claims["user"])
+	conn.Release()
+	if err != nil {
 		return arrOrders, http.StatusBadRequest
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var ord orderDB
 
