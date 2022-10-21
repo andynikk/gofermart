@@ -297,27 +297,27 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 		order.Token = r.Header["Authorization"][0]
 	}
 	fmt.Println("++++++++++++++3")
-	//listOrder, status := order.ListOrder()
+	listOrder, status := order.ListOrder()
 
-	var listOrder []orderDB
-	orderDB := orderDB{
-		Order:      "258978",
-		Status:     "NEW",
-		Accrual:    45.55,
-		UploadedAt: time.Now(),
-	}
-	listOrder = append(listOrder, orderDB)
-	status := http.StatusOK
-
-	//if status != http.StatusOK {
-	//	//_, err := w.Write([]byte(""))
-	//	//if err != nil {
-	//	//	constants.Logger.ErrorLog(err)
-	//	//}
-	//
-	//	w.WriteHeader(status)
-	//	return
+	//var listOrder []orderDB
+	//orderDB := orderDB{
+	//	Order:      "258978",
+	//	Status:     "NEW",
+	//	Accrual:    45.55,
+	//	UploadedAt: time.Now(),
 	//}
+	//listOrder = append(listOrder, orderDB)
+	//status := http.StatusOK
+
+	if status != http.StatusOK {
+		//_, err := w.Write([]byte(""))
+		//if err != nil {
+		//	constants.Logger.ErrorLog(err)
+		//}
+
+		w.WriteHeader(status)
+		return
+	}
 	fmt.Println("++++++++++++++4")
 
 	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
