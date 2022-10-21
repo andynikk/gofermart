@@ -92,11 +92,11 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Authorization", tokenString)
-	r.Header.Set("Authorization", tokenString)
+	w.Header().Add("Authorization", tokenString)
+	r.Header.Add("Authorization", tokenString)
 
-	w.Header().Set("Set-Cookie", tokenString)
-	r.Header.Set("Set-Cookie", tokenString)
+	w.Header().Add("Set-Cookie", tokenString)
+	r.Header.Add("Set-Cookie", tokenString)
 
 	_, err = w.Write([]byte(tokenString))
 	if err != nil {
