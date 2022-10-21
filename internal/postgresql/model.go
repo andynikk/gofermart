@@ -309,45 +309,40 @@ func (o *Order) SetNextStatus() {
 	}
 }
 
-func (o *Order) BalansOrders() ([]balansDB, int) {
-	var arrBalans []balansDB
+func (o *Order) BalansOrders() (balansDB, int) {
+	var bdb balansDB
 
 	ctx := context.Background()
 	conn, err := o.Pool.Acquire(ctx)
 	if err != nil {
-		return arrBalans, http.StatusInternalServerError
+		return bdb, http.StatusInternalServerError
 	}
 	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(o.Token)
 	if !ok {
 		constants.Logger.InfoLog("error extract claims")
-		return arrBalans, http.StatusUnauthorized
+		return bdb, http.StatusUnauthorized
 	}
 
 	rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
 	if err != nil {
 		conn.Release()
-		return arrBalans, http.StatusBadRequest
+		return bdb, http.StatusBadRequest
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		var bdb balansDB
-
+	if rows.Next() {
 		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
-			continue
+			return bdb, http.StatusNoContent
 		}
-		arrBalans = append(arrBalans, bdb)
+	} else {
+		return bdb, http.StatusNoContent
 	}
 
-	if len(arrBalans) == 0 {
-		return arrBalans, http.StatusNoContent
-	}
-
-	return arrBalans, http.StatusOK
+	return bdb, http.StatusOK
 }
 
 func (o *Order) UserWithdrawal() ([]withdrawDB, int) {
