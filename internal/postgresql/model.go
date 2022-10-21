@@ -133,6 +133,7 @@ func (a *Account) UserOrders() int {
 	if err != nil {
 		return http.StatusInternalServerError
 	}
+	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryUserOrdersTemplate, a.Name)
 	if err != nil {
@@ -161,6 +162,8 @@ func (o *Order) NewOrder() int {
 	if err != nil {
 		return http.StatusInternalServerError
 	}
+	defer conn.Release()
+
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], o.Number)
 	conn.Release()
 	if err != nil {
@@ -200,8 +203,9 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 	if err != nil {
 		return arrOrders, http.StatusInternalServerError
 	}
+	defer conn.Release()
+
 	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, claims["user"])
-	conn.Release()
 	if err != nil {
 		return arrOrders, http.StatusBadRequest
 	}
@@ -313,6 +317,7 @@ func (o *Order) BalansOrders() ([]balansDB, int) {
 	if err != nil {
 		return arrBalans, http.StatusInternalServerError
 	}
+	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(o.Token)
 	if !ok {
@@ -353,6 +358,7 @@ func (o *Order) UserWithdrawal() ([]withdrawDB, int) {
 	if err != nil {
 		return arrWithdraw, http.StatusInternalServerError
 	}
+	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(o.Token)
 	if !ok {
@@ -393,6 +399,7 @@ func (o *Order) UserAccrual() ([]withdrawDB, int) {
 	if err != nil {
 		return arrWithdraw, http.StatusInternalServerError
 	}
+	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(o.Token)
 	if !ok {
@@ -432,6 +439,7 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 	if err != nil {
 		return http.StatusInternalServerError
 	}
+	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(ow.Token)
 	if !ok {
