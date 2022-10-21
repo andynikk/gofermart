@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
@@ -276,6 +277,13 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(orderWithdraw.TryWithdraw())
 }
 
+type orderDB struct {
+	Order      string    `json:"number"`
+	Status     string    `json:"status"`
+	Accrual    float64   `json:"accrual,omitempty"`
+	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
+}
+
 // GET
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -290,16 +298,27 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 		order.Token = r.Header["Authorization"][0]
 	}
 	fmt.Println("++++++++++++++3")
-	listOrder, status := order.ListOrder()
-	if status != http.StatusOK {
-		//_, err := w.Write([]byte(""))
-		//if err != nil {
-		//	constants.Logger.ErrorLog(err)
-		//}
+	//listOrder, status := order.ListOrder()
 
-		w.WriteHeader(status)
-		return
+	var listOrder []orderDB
+	orderDB := orderDB{
+		Order:      "258978",
+		Status:     "NEW",
+		Accrual:    45.55,
+		UploadedAt: time.Now(),
 	}
+	listOrder = append(listOrder, orderDB)
+	status := http.StatusOK
+
+	//if status != http.StatusOK {
+	//	//_, err := w.Write([]byte(""))
+	//	//if err != nil {
+	//	//	constants.Logger.ErrorLog(err)
+	//	//}
+	//
+	//	w.WriteHeader(status)
+	//	return
+	//}
 	fmt.Println("++++++++++++++4")
 
 	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
