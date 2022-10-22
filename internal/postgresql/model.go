@@ -310,8 +310,8 @@ func (o *Order) SetNextStatus() {
 }
 
 type CheckAccrual struct {
-	Accrual     float64
-	DateAccrual time.Duration
+	Accrual     float32
+	DateAccrual time.Time
 	TypeAccrual string
 	Order       int
 }
@@ -322,26 +322,26 @@ func (o *Order) BalansOrders() (BalansDB, int) {
 	ctx := context.Background()
 
 	//////////////////////////////////////////////////////////
-	//c, e := o.Pool.Acquire(ctx)
-	//if e != nil {
-	//	return bdb, http.StatusInternalServerError
-	//}
-	//defer c.Release()
-	//r, e := c.Query(ctx, `SELECT "Accrual", "DateAccrual", "TypeAccrual", "Order" FROM gofermart.order_accrual;`)
-	//if e != nil {
-	//	c.Release()
-	//	return bdb, http.StatusBadRequest
-	//}
-	//defer r.Close()
-	//for r.Next() {
-	//	var ca CheckAccrual
-	//
-	//	e = r.Scan(ca.Accrual, ca.DateAccrual, ca.TypeAccrual, ca.Order)
-	//	if e != nil {
-	//		constants.Logger.ErrorLog(e)
-	//	}
-	//	fmt.Println(ca)
-	//}
+	c, e := o.Pool.Acquire(ctx)
+	if e != nil {
+		return bdb, http.StatusInternalServerError
+	}
+	defer c.Release()
+	r, e := c.Query(ctx, `SELECT "Accrual", "DateAccrual", "TypeAccrual", "Order" FROM gofermart.order_accrual;`)
+	if e != nil {
+		c.Release()
+		return bdb, http.StatusBadRequest
+	}
+	defer r.Close()
+	for r.Next() {
+		var ca CheckAccrual
+
+		e = r.Scan(&ca.Accrual, &ca.DateAccrual, &ca.TypeAccrual, &ca.Order)
+		if e != nil {
+			constants.Logger.ErrorLog(e)
+		}
+		fmt.Println(ca)
+	}
 	/////////////////////////////////////////////////////
 
 	conn, err := o.Pool.Acquire(ctx)
