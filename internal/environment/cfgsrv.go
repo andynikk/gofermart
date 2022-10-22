@@ -2,7 +2,6 @@ package environment
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -23,12 +22,10 @@ type ServerConfig struct {
 
 func (sc *ServerConfig) SetConfigServer() {
 
-	fmt.Println("********1")
 	addressPtr := flag.String("a", constants.PortServer, "порт сервера")
 	addressAcSysPtr := flag.String("r", constants.PortAcSysServer, "сервер системы балов")
 	flag.Parse()
 
-	fmt.Println("********2")
 	var cfgENV ServerConfigENV
 	err := env.Parse(&cfgENV)
 	if err != nil {

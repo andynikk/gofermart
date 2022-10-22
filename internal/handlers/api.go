@@ -44,14 +44,12 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		bodyJSON = bytes.NewReader(arrBody)
 	}
 
-	fmt.Println("---------2")
 	respByte, err := io.ReadAll(bodyJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
 	}
 
-	fmt.Println("---------3")
 	newAccount := new(postgresql.Account)
 	newAccount.Cfg = new(postgresql.Cfg)
 
@@ -62,7 +60,6 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 	newAccount.Key = srv.Cfg.Key
 
-	fmt.Println("---------4")
 	tx, err := srv.Pool.Begin(srv.Context.Ctx)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
@@ -83,7 +80,6 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 			constants.Logger.ErrorLog(err)
 		}
 	} else {
-		fmt.Println("---------8")
 		if err := tx.Rollback(srv.Context.Ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}

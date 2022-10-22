@@ -322,6 +322,7 @@ func (o *Order) BalansOrders() (BalansDB, int) {
 	ctx := context.Background()
 
 	//////////////////////////////////////////////////////////
+	fmt.Println("(+++++++++++")
 	c, e := o.Pool.Acquire(ctx)
 	if e != nil {
 		return bdb, http.StatusInternalServerError
@@ -342,6 +343,7 @@ func (o *Order) BalansOrders() (BalansDB, int) {
 		}
 		fmt.Println(ca)
 	}
+	fmt.Println("+++++++++++)")
 	/////////////////////////////////////////////////////
 
 	conn, err := o.Pool.Acquire(ctx)
