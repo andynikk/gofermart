@@ -189,14 +189,14 @@ func (o *Order) NewOrder() int {
 	return http.StatusAccepted
 }
 
-type CheckOrders struct {
-	userID     string
-	orderID    int
-	createdAt  time.Time
-	startedAt  time.Time
-	finishedAt time.Time
-	failedAt   time.Time
-}
+//type CheckOrders struct {
+//	userID     string
+//	orderID    int
+//	createdAt  time.Time
+//	startedAt  time.Time
+//	finishedAt time.Time
+//	failedAt   time.Time
+//}
 
 func (o *Order) ListOrder() ([]orderDB, int) {
 	var arrOrders []orderDB
@@ -204,22 +204,22 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 	ctx := context.Background()
 
 	//////////////////////////////////////////////////////////
-	fmt.Println("(**************")
-	c, _ := o.Pool.Acquire(ctx)
-	defer c.Release()
-	r, _ := c.Query(ctx, `SELECT "userID", "orderID", "createdAt", "startedAt", "finishedAt", "failedAt" FROM gofermart.orders;`)
-	defer r.Close()
-
-	for r.Next() {
-		var co CheckOrders
-
-		e := r.Scan(&co.userID, &co.orderID, &co.createdAt, &co.startedAt, &co.finishedAt, &co.failedAt)
-		if e != nil {
-			constants.Logger.ErrorLog(e)
-		}
-		fmt.Println(co)
-	}
-	fmt.Println("**************)")
+	//fmt.Println("(**************")
+	//c, _ := o.Pool.Acquire(ctx)
+	//defer c.Release()
+	//r, _ := c.Query(ctx, `SELECT "userID", "orderID", "createdAt", "startedAt", "finishedAt", "failedAt" FROM gofermart.orders;`)
+	//defer r.Close()
+	//
+	//for r.Next() {
+	//	var co CheckOrders
+	//
+	//	e := r.Scan(&co.userID, &co.orderID, &co.createdAt, &co.startedAt, &co.finishedAt, &co.failedAt)
+	//	if e != nil {
+	//		constants.Logger.ErrorLog(e)
+	//	}
+	//	fmt.Println(co)
+	//}
+	//fmt.Println("**************)")
 	/////////////////////////////////////////////////////
 
 	claims, ok := token.ExtractClaims(o.Token)
@@ -338,12 +338,12 @@ func (o *Order) SetNextStatus() {
 	}
 }
 
-type CheckAccrual struct {
-	Accrual     float32
-	DateAccrual time.Time
-	TypeAccrual string
-	Order       int
-}
+//type CheckAccrual struct {
+//	Accrual     float32
+//	DateAccrual time.Time
+//	TypeAccrual string
+//	Order       int
+//}
 
 func (o *Order) BalansOrders() (BalansDB, int) {
 	var bdb BalansDB
@@ -351,28 +351,28 @@ func (o *Order) BalansOrders() (BalansDB, int) {
 	ctx := context.Background()
 
 	//////////////////////////////////////////////////////////
-	fmt.Println("(+++++++++++")
-	c, e := o.Pool.Acquire(ctx)
-	if e != nil {
-		return bdb, http.StatusInternalServerError
-	}
-	defer c.Release()
-	r, e := c.Query(ctx, `SELECT "Accrual", "DateAccrual", "TypeAccrual", "Order" FROM gofermart.order_accrual;`)
-	if e != nil {
-		c.Release()
-		return bdb, http.StatusBadRequest
-	}
-	defer r.Close()
-	for r.Next() {
-		var ca CheckAccrual
-
-		e = r.Scan(&ca.Accrual, &ca.DateAccrual, &ca.TypeAccrual, &ca.Order)
-		if e != nil {
-			constants.Logger.ErrorLog(e)
-		}
-		fmt.Println(ca)
-	}
-	fmt.Println("+++++++++++)")
+	//fmt.Println("(+++++++++++")
+	//c, e := o.Pool.Acquire(ctx)
+	//if e != nil {
+	//	return bdb, http.StatusInternalServerError
+	//}
+	//defer c.Release()
+	//r, e := c.Query(ctx, `SELECT "Accrual", "DateAccrual", "TypeAccrual", "Order" FROM gofermart.order_accrual;`)
+	//if e != nil {
+	//	c.Release()
+	//	return bdb, http.StatusBadRequest
+	//}
+	//defer r.Close()
+	//for r.Next() {
+	//	var ca CheckAccrual
+	//
+	//	e = r.Scan(&ca.Accrual, &ca.DateAccrual, &ca.TypeAccrual, &ca.Order)
+	//	if e != nil {
+	//		constants.Logger.ErrorLog(e)
+	//	}
+	//	fmt.Println(ca)
+	//}
+	//fmt.Println("+++++++++++)")
 	/////////////////////////////////////////////////////
 
 	conn, err := o.Pool.Acquire(ctx)
