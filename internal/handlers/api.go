@@ -23,7 +23,6 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	var bodyJSON io.Reader
 	var arrBody []byte
 
-	fmt.Println("---------1")
 	contentEncoding := r.Header.Get("Content-Encoding")
 
 	bodyJSON = r.Body
@@ -330,7 +329,6 @@ func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
 	order := new(postgresql.Order)

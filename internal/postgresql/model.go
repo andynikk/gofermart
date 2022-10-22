@@ -309,9 +309,41 @@ func (o *Order) SetNextStatus() {
 	}
 }
 
+type CheckAccrual struct {
+	Accrual     float64
+	DateAccrual time.Duration
+	TypeAccrual string
+	Order       int
+}
+
 func (o *Order) BalansOrders() (BalansDB, int) {
 	var bdb BalansDB
+
 	ctx := context.Background()
+
+	//////////////////////////////////////////////////////////
+	//c, e := o.Pool.Acquire(ctx)
+	//if e != nil {
+	//	return bdb, http.StatusInternalServerError
+	//}
+	//defer c.Release()
+	//r, e := c.Query(ctx, `SELECT "Accrual", "DateAccrual", "TypeAccrual", "Order" FROM gofermart.order_accrual;`)
+	//if e != nil {
+	//	c.Release()
+	//	return bdb, http.StatusBadRequest
+	//}
+	//defer r.Close()
+	//for r.Next() {
+	//	var ca CheckAccrual
+	//
+	//	e = r.Scan(ca.Accrual, ca.DateAccrual, ca.TypeAccrual, ca.Order)
+	//	if e != nil {
+	//		constants.Logger.ErrorLog(e)
+	//	}
+	//	fmt.Println(ca)
+	//}
+	/////////////////////////////////////////////////////
+
 	conn, err := o.Pool.Acquire(ctx)
 	if err != nil {
 		return bdb, http.StatusInternalServerError
@@ -360,7 +392,6 @@ func (o *Order) UserWithdrawal() ([]withdrawDB, int) {
 		return arrWithdraw, http.StatusUnauthorized
 	}
 
-	//rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], 0, "MINUS")
 	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
 	if err != nil {
 		conn.Release()
@@ -525,7 +556,7 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.order_accrual
 								(
 									"Accrual" numeric,
-									"DateAccrual" timestamp with time zone,
+									"DateAccrual" double precision,
 									"TypeAccrual" character varying(10) COLLATE pg_catalog."default",
 									"Order" numeric
 								)
