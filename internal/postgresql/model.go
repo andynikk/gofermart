@@ -189,10 +189,39 @@ func (o *Order) NewOrder() int {
 	return http.StatusAccepted
 }
 
+type CheckOrders struct {
+	userID     string
+	orderID    int
+	createdAt  time.Time
+	startedAt  time.Time
+	finishedAt time.Time
+	failedAt   time.Time
+}
+
 func (o *Order) ListOrder() ([]orderDB, int) {
 	var arrOrders []orderDB
 
 	ctx := context.Background()
+
+	//////////////////////////////////////////////////////////
+	fmt.Println("(**************")
+	c, _ := o.Pool.Acquire(ctx)
+	defer c.Release()
+	r, _ := c.Query(ctx, `SELECT "userID", "orderID", "createdAt", "startedAt", "finishedAt", "failedAt" FROM gofermart.orders;`)
+	defer r.Close()
+
+	for r.Next() {
+		var co CheckOrders
+
+		e := r.Scan(&co.userID, &co.orderID, &co.createdAt, &co.startedAt, &co.finishedAt, &co.failedAt)
+		if e != nil {
+			constants.Logger.ErrorLog(e)
+		}
+		fmt.Println(co)
+	}
+	fmt.Println("**************)")
+	/////////////////////////////////////////////////////
+
 	claims, ok := token.ExtractClaims(o.Token)
 	if !ok {
 		constants.Logger.InfoLog("error extract claims")
@@ -576,7 +605,7 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 
 	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.orders
 								(
-									"userID" character(150) COLLATE pg_catalog."default" NOT NULL,
+									"userID" character varying(150) COLLATE pg_catalog."default" NOT NULL,
 									"orderID" numeric,
 									"createdAt" timestamp with time zone,
 									"startedAt" timestamp with time zone,
