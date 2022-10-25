@@ -12,7 +12,6 @@ import (
 )
 
 func Shutdown(srv *handlers.Server) {
-	srv.Pool.Close()
 	constants.Logger.InfoLog("server stopped")
 }
 
