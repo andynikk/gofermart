@@ -41,6 +41,7 @@ func (srv *Server) UserRegisterGET(rw http.ResponseWriter, rq *http.Request) {
 }
 
 func (srv *Server) UserLoginGET(rw http.ResponseWriter, rq *http.Request) {
+
 	content := web.LoginPage()
 
 	cookie, err := rq.Cookie(constants.AccountCookies)

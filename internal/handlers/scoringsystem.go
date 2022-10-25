@@ -44,9 +44,6 @@ func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresq
 	fullScoringSystem = new(postgresql.FullScoringSystem)
 	scoringSystem := new(postgresql.ScoringSystem)
 
-	//fullScoringSystem.HttpStatus = http.StatusTooManyRequests
-	//return fullScoringSystem
-
 	addressPost := fmt.Sprintf("http://%s/api/orders/%s", srv.AddressAcSys, number)
 	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
 	if err != nil {

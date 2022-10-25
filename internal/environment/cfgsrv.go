@@ -44,4 +44,5 @@ func (sc *ServerConfig) SetConfigServer() {
 
 	sc.Address = adresServer
 	sc.AddressAcSys = addressAcSysServer
+
 }

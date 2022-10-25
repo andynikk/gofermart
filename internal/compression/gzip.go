@@ -7,6 +7,7 @@ import (
 )
 
 func Compress(data []byte) ([]byte, error) {
+
 	var valByte bytes.Buffer
 	writer := gzip.NewWriter(&valByte)
 	if _, err := writer.Write(data); err != nil {

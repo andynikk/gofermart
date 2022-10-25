@@ -37,6 +37,7 @@ func StartPage() string {
 }
 
 func OrderPage(arrOrder []string) string {
+
 	content := `<!DOCTYPE html>
 				<html>
 				<head>

@@ -139,9 +139,6 @@ const (
 								gofermart.orders ("userID", "orderID", "createdAt") 
 							VALUES
 								($1, $2, $3);`
-	QueryAddStatusTemplate = `INSERT INTO gofermart.order_statuses(
-									"Order", "Status", "DateStasus")
-									VALUES ($1, $2, $3);`
 	QueryAddAccrual = `INSERT INTO gofermart.order_accrual("Order", "Accrual", "DateAccrual", "TypeAccrual")
 							VALUES ($1, $2, $3, $4);`
 	QuerySelectAccrual = `SELECT	

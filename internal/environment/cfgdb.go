@@ -47,4 +47,5 @@ func (dbc *DBConfig) SetConfigDB() {
 
 	dbc.DatabaseDsn = databaseDsn
 	dbc.Key = keyHash
+
 }
