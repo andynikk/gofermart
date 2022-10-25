@@ -9,6 +9,7 @@ import (
 	"github.com/andynikk/gofermart/internal/token"
 )
 
+// 1 TODO: инициализация роутера и хендлеров
 func (srv *Server) initRouters() {
 	r := mux.NewRouter()
 
@@ -33,6 +34,7 @@ func (srv *Server) initRouters() {
 	srv.Router = r
 }
 
+// 2 TODO: инициализация базы данных
 func (srv *Server) InitDB() {
 	srv.DBConnector = new(postgresql.DBConnector)
 	if err := srv.DBConnector.PoolDB(); err != nil {
@@ -41,6 +43,7 @@ func (srv *Server) InitDB() {
 	postgresql.CreateModeLDB(srv.Pool)
 }
 
+// 3 TODO: инициализация конфигурации
 func (srv *Server) InitCFG() {
 	srv.ServerConfig = new(environment.ServerConfig)
 	srv.ServerConfig.SetConfigServer()

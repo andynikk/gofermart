@@ -16,6 +16,7 @@ func Shutdown(srv *handlers.Server) {
 	constants.Logger.InfoLog("server stopped")
 }
 
+// TODO: запуск сервера
 func main() {
 	server := handlers.NewServer()
 	go func() {

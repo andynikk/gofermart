@@ -414,6 +414,7 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 		return http.StatusInternalServerError
 	}
 	defer conn.Release()
+	//TODO: Добавляем спсанные баллы
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual, ow.Order, sumWithdraw, time.Now(), "MINUS"); err != nil {
 		constants.Logger.ErrorLog(err)
 		return http.StatusInternalServerError

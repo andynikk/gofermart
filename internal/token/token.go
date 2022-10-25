@@ -49,6 +49,7 @@ func ExtractClaims(tokenStr string) (jwt.MapClaims, bool) {
 	}
 }
 
+// IsAuthorized TODO: Проверка аутентификации
 func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
