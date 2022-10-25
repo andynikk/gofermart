@@ -14,7 +14,6 @@ func HeshSHA256(data string, strKey string) (hash string) {
 	}
 
 	key := []byte(strKey)
-
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(data))
 	hash = fmt.Sprintf("%x", h.Sum(nil))

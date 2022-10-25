@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -60,10 +61,13 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 	newAccount.Key = srv.Cfg.Key
 
-	tx, err := srv.Pool.Begin(srv.Context.Ctx)
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	tx, err := srv.Pool.Begin(ctx)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		w.WriteHeader(http.StatusInternalServerError)
+		cancelFunc = nil
 		return
 	}
 
@@ -71,7 +75,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	tokenString := ""
 	if rez == http.StatusOK {
-		if err := tx.Commit(srv.Context.Ctx); err != nil {
+		if err := tx.Commit(ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
 
@@ -80,16 +84,18 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 			constants.Logger.ErrorLog(err)
 		}
 	} else {
-		if err := tx.Rollback(srv.Context.Ctx); err != nil {
+		if err := tx.Rollback(ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
 		w.WriteHeader(rez)
+		cancelFunc = nil
 		return
 	}
 
 	w.Header().Add("Authorization", tokenString)
-	//w.Header().Add("Set-Cookie", tokenString)
 	w.WriteHeader(rez)
+
+	cancelFunc()
 }
 
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
@@ -204,24 +210,29 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		order.Token = r.Header["Authorization"][0]
 	}
 
-	tx, err := srv.Pool.Begin(srv.Context.Ctx)
+	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	tx, err := srv.Pool.Begin(ctx)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		w.WriteHeader(http.StatusInternalServerError)
+		cancelFunc = nil
 		return
 	}
 
 	rez := order.NewOrder()
 	w.WriteHeader(rez)
 	if rez == http.StatusOK {
-		if err := tx.Commit(srv.Context.Ctx); err != nil {
+		if err := tx.Commit(ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
 	} else {
-		if err := tx.Rollback(srv.Context.Ctx); err != nil {
+		if err := tx.Rollback(ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
 	}
+
+	cancelFunc()
 }
 
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {

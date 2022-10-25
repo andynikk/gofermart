@@ -9,15 +9,9 @@ import (
 	"github.com/andynikk/gofermart/internal/environment"
 )
 
-type Context struct {
-	Ctx        context.Context
-	CancelFunc context.CancelFunc
-}
-
 type DBConnector struct {
-	Pool    *pgxpool.Pool
-	Cfg     *environment.DBConfig
-	Context Context
+	Pool *pgxpool.Pool
+	Cfg  *environment.DBConfig
 }
 
 func (dbc *DBConnector) PoolDB() error {
@@ -37,10 +31,7 @@ func (dbc *DBConnector) PoolDB() error {
 
 	dbc.Pool = pool
 	dbc.Cfg = dbCfg
-	dbc.Context = Context{
-		Ctx:        ctx,
-		CancelFunc: cancelFunc,
-	}
 
+	cancelFunc()
 	return nil
 }

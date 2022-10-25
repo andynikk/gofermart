@@ -12,11 +12,8 @@ import (
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/environment"
 	"github.com/andynikk/gofermart/internal/postgresql"
-	"github.com/andynikk/gofermart/internal/token"
 	"github.com/andynikk/gofermart/internal/web"
 )
-
-//var mySigningKey = []byte("johenews")
 
 type Server struct {
 	*mux.Router
@@ -24,48 +21,13 @@ type Server struct {
 	*environment.ServerConfig
 }
 
-func NewServer(srv *Server) {
+func NewServer() (srv *Server) {
+	srv = new(Server)
+	srv.initRouters()
+	srv.InitDB()
+	srv.InitCFG()
 
-	r := mux.NewRouter()
-
-	//limiter := make(chan struct{}, 500)
-	//r.Use(func(handler http.Handler) http.Handler {
-	//	limiter <- struct{}{}
-	//	defer func() { <-limiter }()
-	//
-	//	constants.Logger.InfoLog("Я тут")
-	//	return handler
-	//})
-
-	//GET
-	r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersGET)).Methods("GET")
-	r.Handle("/api/user/balance", token.IsAuthorized(srv.apiUserBalanceGET)).Methods("GET")
-	r.Handle("/api/user/balance/withdrawals", token.IsAuthorized(srv.apiUserWithdrawalsGET)).Methods("GET")
-	r.Handle("/api/user/withdrawals", token.IsAuthorized(srv.apiUserWithdrawalsGET)).Methods("GET")
-
-	r.Handle("/api/orders/{number}", token.IsAuthorized(srv.apiUserAccrualGET)).Methods("GET")
-
-	r.HandleFunc("/api/user/orders-next-status", srv.apiNextStatus).Methods("GET")
-
-	//POST
-	r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersPOST)).Methods("POST")
-	r.Handle("/api/user/balance/withdraw", token.IsAuthorized(srv.apiUserWithdrawPOST)).Methods("POST")
-
-	//POST Handle Func
-	r.HandleFunc("/api/user/register", srv.apiUserRegisterPOST).Methods("POST")
-	r.HandleFunc("/api/user/login", srv.apiUserLoginPOST).Methods("POST")
-
-	srv.Router = r
-
-	srv.DBConnector = new(postgresql.DBConnector)
-	if err := srv.DBConnector.PoolDB(); err != nil {
-		constants.Logger.ErrorLog(err)
-	}
-
-	srv.ServerConfig = new(environment.ServerConfig)
-	srv.ServerConfig.SetConfigServer()
-
-	postgresql.CreateModeLDB(srv.Pool)
+	return srv
 }
 
 func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
