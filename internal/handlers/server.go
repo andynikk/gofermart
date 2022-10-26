@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -32,14 +31,7 @@ func NewServer() (srv *Server) {
 
 func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.StartPage()
-
-	cookie, err := rq.Cookie(constants.AccountCookies)
-	if err == nil {
-		arrOrder := new([]string)
-		content = web.OrderPage(*arrOrder)
-		fmt.Println(cookie.Path)
-	}
+	content := web.StartPage(srv.Address)
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 

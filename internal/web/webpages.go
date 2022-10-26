@@ -1,7 +1,11 @@
 package web
 
-func StartPage() string {
-	content := `<!DOCTYPE html>
+import (
+	"fmt"
+)
+
+func StartPage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
 					<meta charset="UTF-8">
@@ -12,93 +16,32 @@ func StartPage() string {
 
 				<p>&nbsp;</p>
 				
-				<p><a href="http://localhost:8080/user/register" target="_blank">регистрация пользователя</a></p>
+				<p><a href="http://%s/user/register" target="_self">регистрация пользователя</a></p>
 				
-				<p><a href="http://localhost:8080/user/login" target="_blank">аутентификация пользователя</a></p>
+				<p><a href="http://%s/user/login" target="_self">аутентификация пользователя</a></p>
 				
-				<p><a href="http://localhost:8080/api/user/orders" target="_blank">загрузка пользователем номера 
+				<p><a href="http://%s/user/order" target="_self">загрузка пользователем номера 
 						заказа для расчёта</a></p>
 				
-				<p><a href="http://localhost:8080/api/user/orders" target="_blank">получение списка загруженных 
+				<p><a href="http://%s/user/orders" target="_self">получение списка загруженных 
 						пользователем номеров заказов, статусов их обработки и информации о начислениях</a></p>
 				
-				<p><a href="http://localhost:8080/api/user/balance" target="_blank">получение текущего баланса счёта
+				<p><a href="http://%s/user/balance" target="_self">получение текущего баланса счёта
 						баллов лояльности пользователя</a></p>
 				
-				<p><a href="http://localhost:8080/api/user/balance/withdraw" target="_blank">запрос на списание баллов 
+				<p><a href="http://%s/user/balance/withdraw" target="_self">запрос на списание баллов 
 						с накопительного счёта в счёт оплаты нового заказа</a></p>
 				
-				<p><a href="http://localhost:8080/api/user/balance/withdrawals" target="_blank">получение информации о 
+				<p><a href="http://%s/user/balance/withdrawals" target="_self">получение информации о 
 						выводе средств с накопительного счёта пользователем</a></p>
 				</body>
-				</html>`
+				</html>`, host, host, host, host, host, host, host)
 
 	return content
 }
 
-func OrderPage(arrOrder []string) string {
-
-	content := `<!DOCTYPE html>
-				<html>
-				<head>
-  					<meta charset="UTF-8">
-  					<title>МЕТРИКИ</title>
-				</head>
-				<body>
-				<h1>МЕТРИКИ</h1>
-				<ul>
-				`
-
-	for _, val := range arrOrder {
-		content = content + `<li><b>` + val + `</b></li>` + "\n"
-	}
-	content = content + `</ul>
-						</body>
-						</html>`
-
-	return content
-}
-
-func LoginPage() string {
-	content := `<!DOCTYPE html>
-				<html>
-				<head>
-					<meta charset="UTF-8">
-					<title>Г О Ф Е Р М А Р К Е Т</title>
-				</head>
-				<body>
-				<h3>Гофермарт</h3>
-				
-				<p>Регистрация</p>
-				
-				<p>Имя:&nbsp;<input name="name" id="name" type="text" /></p>
-				
-				<p>Пароль:&nbsp;<input name="password" id="password" type="password" /></p>
-				
-				<p><input name="register" type="button" value="Sign In" onclick="functionToExecute()" /></p>
-
-				<script type="text/javascript">
-					function functionToExecute() {
-						const xhr = new XMLHttpRequest();
-						var txtName = document.querySelector("#name");
-						var txtPassword = document.querySelector("#password");
-						const json = {
-							"name": txtName.value,
-							"password": txtPassword.value
-						};
-						xhr.open('POST', 'http://localhost:8080/api/user/login');
-						xhr.setRequestHeader("Content-Type", "application/json");
-						xhr.send(JSON.stringify(json));
-					}
-				</script>
-				</body>
-				</html>`
-
-	return content
-}
-
-func RegisterPage() string {
-	content := `<!DOCTYPE html>
+func RegisterPage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
 					<meta charset="UTF-8">
@@ -115,43 +58,256 @@ func RegisterPage() string {
 				
 				<p><input name="register" type="button" value="Зарегестрировать" onclick="functionToExecute()" /></p>
 				<script type="text/javascript">
-					function functionToExecute() {
-						const xhr = new XMLHttpRequest();
+					async function functionToExecute() {	
 						var txtName = document.querySelector("#name");
-						var txtPassword = document.querySelector("#password");
-						const json = {
-							"name": txtName.value,
+						var txtPassword = document.querySelector("#password");	
+						
+						let user = {
+						  "login": txtName.value,
 							"password": txtPassword.value
 						};
-						xhr.open('POST', 'http://localhost:8080/api/user/register');
-						xhr.setRequestHeader("Content-Type", "application/json");
-						xhr.send(JSON.stringify(json));
+						
+						let response = await fetch('http://%s/api/user/register', {
+						  method: 'POST',
+						  headers: {
+							'Content-Type': 'application/json;charset=utf-8'
+						  },
+						  body: JSON.stringify(user)
+						});
+							
+						const token = response.headers.get('Authorization');
+//debugger
+						localStorage.setItem("token", token);	
+						if (token != '') {
+							window.location.href = 'http://%s/';
+						} else {
+							alert(response.status)
+						}
 					}
 				</script>
 				</body>
-				</html>`
+				</html>`, host, host)
 
 	return content
 }
 
-func AuthorizationPage(user string, arrOrders []string) string {
-	content := `<!DOCTYPE html>
+func LoginPage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
-  					<meta charset="UTF-8">
-  					<title>Г О Ф Е Р М А Р К Е Т</title>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
 				</head>
 				<body>
 				<h3>Гофермарт</h3>
 				
-				<p>` + user + `</p>	
-				<ul>
-				`
-	for _, val := range arrOrders {
-		content = content + `<li><b>` + val + `</b></li>` + "\n"
-	}
-	content = content + `</ul>
-						</body>
-						</html>`
+				<p>Аутентификация</p>
+				
+				<p>Имя:&nbsp;<input name="name" id="name" type="text" /></p>
+				
+				<p>Пароль:&nbsp;<input name="password" id="password" type="password" /></p>
+				
+				<p><input name="register" type="button" value="Аутентификация" onclick="functionToExecute()" /></p>
+
+				<script type="text/javascript">
+					async function functionToExecute() {	
+						var txtName = document.querySelector("#name");
+						var txtPassword = document.querySelector("#password");	
+						
+						let user = {
+						  "login": txtName.value,
+							"password": txtPassword.value
+						};
+						
+						let response = await fetch('http://%s/api/user/login', {
+						  method: 'POST',
+						  headers: {
+							'Content-Type': 'application/json;charset=utf-8'
+						  },
+						  body: JSON.stringify(user)
+						});
+							
+						const token = response.headers.get('Authorization');
+						localStorage.setItem("token", token);	
+						if (token != '') {
+							window.location.href = 'http://%s';
+						} else {
+							alert(response.status)
+							window.location.href = 'http://%s/user/register';
+						}
+					}
+				</script>
+				</body>
+				</html>`, host, host, host)
+
+	return content
+}
+
+func OrderPage(host string) string {
+
+	content := fmt.Sprintf(`<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
+				</head>
+				<body>
+				<h3>Гофермарт</h3>
+				
+				<p>Сделать заказ</p>
+				
+				<p>Ордер:&nbsp;<input name="order" id="order" type="text" /></p>
+						
+				<p><input name="register" type="button" value="Заказать" onclick="functionToExecute()" /></p>
+
+				<script type="text/javascript">
+					async function functionToExecute() {	
+						const txtOrder = document.querySelector("#order");
+
+						let response = await fetch('http://%s/api/user/orders', {
+						  method: 'POST',
+						  headers: {
+							'Content-Type': 'application/text;charset=utf-8',
+ 							'Authorization': localStorage.getItem("token"),
+						  },
+						  body: txtOrder.value
+						});	
+
+						const httpStatus = response.status
+						if (httpStatus == 202) {
+							window.location.href = 'http://%s';
+						} else {
+							alert(httpStatus)
+						}
+					}
+				</script>
+				</body>
+				</html>`, host, host)
+
+	return content
+}
+
+func OrdersPage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
+				</head>
+				<body>
+				<body onload="loadPage()">
+				<h3>Гофермарт</h3>
+					
+				<pre id='txtOrders'></pre>
+				<script type="text/javascript">
+					async function loadPage() {
+
+						let response = await fetch('http://%s/api/user/orders', {
+						  method: 'GET',
+						  headers: {	
+ 							'Authorization': localStorage.getItem("token"),
+						  }
+						});	
+
+						const httpStatus = response.status
+						let json = await response.json();
+						document.getElementById("txtOrders").innerHTML = "Заказы (статус ответа " + httpStatus + "): <br />" 
+																	+ JSON.stringify(json, null, 4);		
+					}
+				</script>
+				</body>
+				</html>`, host)
+
+	return content
+}
+
+func BalancePage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
+				</head>
+				<body>
+				<body onload="loadPage()">
+				<h3>Гофермарт</h3>
+					
+				<pre id='txtOrders'></pre>
+				<script type="text/javascript">
+					async function loadPage() {
+
+						let response = await fetch('http://%s/api/user/balance', {
+						  method: 'GET',
+						  headers: {	
+ 							'Authorization': localStorage.getItem("token"),
+						  }
+						});	
+
+						const httpStatus = response.status
+						let json = await response.json();
+						document.getElementById("txtOrders").innerHTML = "Баланс (статус ответа " + httpStatus + "): <br />" + 
+																JSON.stringify(json, null, 4);	
+
+						//if (httpStatus == 200) {
+						//	window.location.href = 'http://%s';
+						//} else {
+						//	alert(httpStatus)
+						//}
+					}
+				</script>
+				</body>
+				</html>`, host, host)
+
+	return content
+}
+
+func BalanceWithdrawPage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
+				</head>
+				<body>
+				<h3>Гофермарт</h3>
+				
+				<p>Вывод средств</p>
+				
+				<p>Заказ:&nbsp;<input name="order" id="order" type="text" /></p>
+				
+				<p>Баллы спсания:&nbsp;<input name="withdraw" id="withdraw" type="number" /></p>
+				
+				<p><input name="register" type="button" value="Вывести" onclick="functionToExecute()" /></p>
+
+				<script type="text/javascript">
+					async function functionToExecute() {	
+						var txtOrder = document.querySelector("#order");
+						var txtWithdraw = document.querySelector("#withdraw");	
+						
+						let user = {
+						  "order": txtOrder.value,
+							"sum": txtWithdraw.valueAsNumber
+						};
+						
+						let response = await fetch('http://%s/api/user/balance/withdraw', {
+						  method: 'POST',
+						  headers: {
+							'Content-Type': 'application/json;charset=utf-8',
+							'Authorization': localStorage.getItem("token"),
+						  },
+						  body: JSON.stringify(user)
+						});
+									
+						const httpStatus = response.status
+						if (httpStatus == 200) {
+							window.location.href = 'http://%s';
+						} else {
+							alert(httpStatus)
+						}
+					}
+				</script>
+				</body>
+				</html>`, host, host)
+
 	return content
 }

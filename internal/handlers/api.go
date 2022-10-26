@@ -91,6 +91,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		if err := tx.Rollback(ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
+		w.Header().Add("Authorization", "")
 		w.WriteHeader(rez)
 		cancelFunc = nil
 		return
@@ -151,6 +152,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	rez := Account.GetAccount()
 
 	if rez != http.StatusOK {
+		w.Header().Add("Authorization", "")
 		w.WriteHeader(rez)
 		return
 	}
@@ -201,7 +203,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	numOrder, err := strconv.Atoi(string(respByte))
-	if err != nil {
+	if err != nil || numOrder == 0 {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "not Luna", http.StatusInternalServerError)
 	}
@@ -335,12 +337,12 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5.1.4 TODO: Выводим список ордеров
+	w.WriteHeader(status)
 	_, err = w.Write(listOrderJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
 
-	w.WriteHeader(status)
 }
 
 // 6 TODO: Для тестирования сделал API для продвижения ордера на следующий (рандомный) этап (/api/user/orders-next-status)

@@ -31,6 +31,16 @@ func (srv *Server) initRouters() {
 	r.HandleFunc("/api/user/register", srv.apiUserRegisterPOST).Methods("POST")
 	r.HandleFunc("/api/user/login", srv.apiUserLoginPOST).Methods("POST")
 
+	//GET HTTP PAGES
+	r.HandleFunc("/", srv.HandleFunc).Methods("GET")
+	r.HandleFunc("/user/register", srv.UserRegisterGET).Methods("GET")
+	r.HandleFunc("/user/login", srv.UserLoginGET).Methods("GET")
+	r.HandleFunc("/user/order", srv.UserOrderGET).Methods("GET")
+	r.HandleFunc("/user/orders", srv.UserOrdersGET).Methods("GET")
+	r.HandleFunc("/user/balance", srv.UserBalanceGET).Methods("GET")
+	r.HandleFunc("/user/balance", srv.UserBalanceGET).Methods("GET")
+	r.HandleFunc("/user/balance/withdraw", srv.UserBalanceWithdrawGET).Methods("GET")
+
 	srv.Router = r
 }
 

@@ -54,7 +54,6 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Connection", "close")
-		//defer r.Body.Close()
 
 		if r.Header["Authorization"] != nil {
 

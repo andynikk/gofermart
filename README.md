@@ -25,6 +25,9 @@ git fetch template && git checkout template/master .github
 Затем добавьте полученные изменения в свой репозиторий.
 
 # ToDo
+
+Добавлена клиентская часть. Адрес: переменная окружения ОС RUN_ADDRESS или флаг -a;
+
 ### Found 56 TODO items in 4 files
 #### gofermart
 * cmd
