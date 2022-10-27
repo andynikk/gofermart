@@ -16,26 +16,29 @@ func StartPage(host string) string {
 
 				<p>&nbsp;</p>
 				
-				<p><a href="http://%s/user/register" target="_self">регистрация пользователя</a></p>
+				<p><a href="http://%s/docs/user/register" target="_self">регистрация пользователя</a></p>
 				
-				<p><a href="http://%s/user/login" target="_self">аутентификация пользователя</a></p>
+				<p><a href="http://%s/docs/user/login" target="_self">аутентификация пользователя</a></p>
 				
-				<p><a href="http://%s/user/order" target="_self">загрузка пользователем номера 
+				<p><a href="http://%s/docs/user/order" target="_self">загрузка пользователем номера 
 						заказа для расчёта</a></p>
 				
-				<p><a href="http://%s/user/orders" target="_self">получение списка загруженных 
+				<p><a href="http://%s/docs/user/orders" target="_self">получение списка загруженных 
 						пользователем номеров заказов, статусов их обработки и информации о начислениях</a></p>
 				
-				<p><a href="http://%s/user/balance" target="_self">получение текущего баланса счёта
+				<p><a href="http://%s/docs/user/balance" target="_self">получение текущего баланса счёта
 						баллов лояльности пользователя</a></p>
 				
-				<p><a href="http://%s/user/balance/withdraw" target="_self">запрос на списание баллов 
+				<p><a href="http://%s/docs/user/balance/withdraw" target="_self">запрос на списание баллов 
 						с накопительного счёта в счёт оплаты нового заказа</a></p>
 				
-				<p><a href="http://%s/user/balance/withdrawals" target="_self">получение информации о 
+				<p><a href="http://%s/docs/user/balance/withdrawals" target="_self">получение информации о 
 						выводе средств с накопительного счёта пользователем</a></p>
+
+				<p><a href="http://%s/docs/user/accrual" target="_self">Получить информацию о начислении баллов лояльности 
+						по заказу</a></p>
 				</body>
-				</html>`, host, host, host, host, host, host, host)
+				</html>`, host, host, host, host, host, host, host, host)
 
 	return content
 }
@@ -298,6 +301,84 @@ func BalanceWithdrawPage(host string) string {
 						  body: JSON.stringify(user)
 						});
 									
+						const httpStatus = response.status
+						if (httpStatus == 200) {
+							window.location.href = 'http://%s';
+						} else {
+							alert(httpStatus)
+						}
+					}
+				</script>
+				</body>
+				</html>`, host, host)
+
+	return content
+}
+
+func BalanceWithdrawsPage(host string) string {
+	content := fmt.Sprintf(`<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
+				</head>
+				<body>
+				<body onload="loadPage()">
+				<h3>Гофермарт</h3>
+					
+				<pre id='txtOrders'></pre>
+				<script type="text/javascript">
+					async function loadPage() {		
+						
+						let response = await fetch('http://%s/api/user/withdrawals', {
+						  method: 'GET',
+						  headers: {	
+ 							'Authorization': localStorage.getItem("token"),
+						  }
+						});
+									
+						const httpStatus = response.status
+						let json = await response.json();
+						document.getElementById("txtOrders").innerHTML = "Вывод средств (статус ответа " + httpStatus + "): <br />" 
+																	+ JSON.stringify(json, null, 4);
+					}
+				</script>
+				</body>
+				</html>`, host)
+
+	return content
+}
+
+func AccrualPage(host string) string {
+
+	content := fmt.Sprintf(`<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>Г О Ф Е Р М А Р К Е Т</title>
+				</head>
+				<body>
+				<h3>Гофермарт</h3>
+				
+				<p>Начисление балов</p>
+				
+				<p>Ордер:&nbsp;<input name="order" id="order" type="text" /></p>
+						
+				<p><input name="register" type="button" value="Получить баллы лояльности" onclick="functionToExecute()" /></p>
+				<p><br /></p>
+				<pre id='txtOrders'></pre>
+				<script type="text/javascript">
+					async function functionToExecute() {	
+						const txtOrder = document.querySelector("#order");
+
+						let response = await fetch('http://%s/api/orders/' + txtOrder.value, {
+						  method: 'GET',
+						  headers: {
+							'Content-Type': 'application/text;charset=utf-8',
+ 							'Authorization': localStorage.getItem("token"),
+						  },
+						});	
+
 						const httpStatus = response.status
 						if (httpStatus == 200) {
 							window.location.href = 'http://%s';

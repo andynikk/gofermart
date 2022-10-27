@@ -54,7 +54,8 @@ const (
 								FROM
 									gofermart.orders as orders
 								WHERE
-										"userID" = $1 and "orderID" = $2;`
+										CASE WHEN $1 = '' THEN true ELSE "userID" = $1 END 
+											and "orderID" = $2;`
 
 	QueryListOrderTemplate = `SELECT	
 								 orders."orderID"
@@ -170,7 +171,15 @@ const (
 										oa."Order" = $1
 										AND oa."TypeAccrual" = 'PLUS'`
 
-	AccountCookies = "gofermarket_authorization"
+	QueryUpdateStartedAt = `UPDATE gofermart.orders
+								SET "startedAt" = $1
+								WHERE "orderID" = $2;`
+	QueryUpdateFinishedAt = `UPDATE gofermart.orders
+								SET "finishedAt" = $1
+								WHERE "orderID" = $2;`
+	QueryUpdateFailedAt = `UPDATE gofermart.orders
+								SET "failedAt" = $1
+								WHERE "orderID" = $2;`
 )
 
 func (s Statuses) String() string {

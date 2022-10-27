@@ -236,12 +236,17 @@ func (o *Order) SetNextStatus() {
 			if err != nil {
 				return
 			}
+			defer conn.Release()
 
 			accrual := random.RandPriceItem(min, max)
 			if _, err = conn.Query(ctx, constants.QueryAddAccrual, &val.Number, accrual, time.Now(), "PLUS"); err != nil {
 				constants.Logger.ErrorLog(err)
 				continue
 			}
+			//if _, err = conn.Query(ctx, constants.QueryUpdateFinishedAt, time.Now(), &val.Number); err != nil {
+			//	constants.Logger.ErrorLog(err)
+			//	continue
+			//}
 			conn.Release()
 		}
 
@@ -382,7 +387,26 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 		return http.StatusUnauthorized
 	}
 
-	rows, err := conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], ow.Order)
+	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], ow.Order)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		conn.Release()
+		return http.StatusInternalServerError
+	}
+	if !rows.Next() {
+		constants.Logger.ErrorLog(err)
+		conn.Release()
+		return http.StatusUnprocessableEntity
+	}
+	conn.Release()
+
+	conn, err = ow.Pool.Acquire(ctx)
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+	defer conn.Release()
+
+	rows, err = conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], ow.Order)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		conn.Release()
@@ -396,7 +420,8 @@ func (ow *OrderWithdraw) TryWithdraw() int {
 		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
-			continue
+			//conn.Release()
+			//return http.StatusInternalServerError
 		}
 		if bdb.Total < sumWithdraw {
 			constants.Logger.ErrorLog(err)

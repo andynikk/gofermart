@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
@@ -266,7 +267,26 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		order.Number,
 		arrGoodOrderSS,
 	}
-	srv.AddOrderScoringSystem(&orderSS)
+	httpStatus := srv.AddOrderScoringSystem(&orderSS)
+	if httpStatus != http.StatusAccepted {
+		cancelFunc = nil
+		return
+	}
+
+	conn, err := srv.Pool.Acquire(ctx)
+	if err != nil {
+		cancelFunc = nil
+		return
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, constants.QueryUpdateStartedAt, time.Now(), order.Number)
+	if err != nil {
+		conn.Release()
+		cancelFunc = nil
+		return
+	}
+	defer rows.Close()
 
 	cancelFunc()
 }
@@ -321,6 +341,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	// 4.1.2 TODO: Если начисленных баллов больше, чем списанных, то разрешаем спсание
 	// 4.1.3 TODO: Добавляем запись с количеством списанных баллов
 	w.WriteHeader(orderWithdraw.TryWithdraw())
+
 }
 
 // GET
@@ -484,7 +505,16 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	fullScoringSystem := srv.executFSS(data)
 	close(data)
 
+	listAccrualJSON, err := json.MarshalIndent(fullScoringSystem.ScoringSystem, "", " ")
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
+
 	w.WriteHeader(fullScoringSystem.HTTPStatus)
+	_, err = w.Write(listAccrualJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
 }
 
 func (srv *Server) executFSS(data chan *postgresql.FullScoringSystem) (fullScoringSystem *postgresql.FullScoringSystem) {

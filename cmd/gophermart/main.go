@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/andynikk/gofermart/internal/constants"
 	"log"
 	"net/http"
 	"os"
@@ -10,10 +9,6 @@ import (
 
 	"github.com/andynikk/gofermart/internal/handlers"
 )
-
-func Shutdown(srv *handlers.Server) {
-	constants.Logger.InfoLog("server stopped")
-}
 
 // TODO: запуск сервера
 func main() {
@@ -32,5 +27,6 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	<-stop
-	Shutdown(server)
+
+	server.Shutdown()
 }

@@ -44,12 +44,36 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresql.FullScoringSystem) {
 	fullScoringSystem = new(postgresql.FullScoringSystem)
 	scoringSystem := new(postgresql.ScoringSystem)
+	fullScoringSystem.ScoringSystem = scoringSystem
+
+	ctx := context.Background()
+	conn, err := srv.Pool.Acquire(ctx)
+	if err != nil {
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
+		return fullScoringSystem
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
+	conn.Release()
+	if err != nil {
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
+		return fullScoringSystem
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		fullScoringSystem.HTTPStatus = http.StatusUnprocessableEntity
+		return fullScoringSystem
+	}
 
 	addressPost := fmt.Sprintf("http://%s/api/orders/%s", srv.AddressAcSys, number)
 	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		return
+
+		fullScoringSystem.HTTPStatus = http.StatusUnprocessableEntity
+		return fullScoringSystem
 	}
 	defer req.Body.Close()
 
@@ -60,7 +84,9 @@ func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresq
 	resp, err := client.Do(req)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		return
+
+		fullScoringSystem.HTTPStatus = http.StatusUnprocessableEntity
+		return fullScoringSystem
 	}
 	defer resp.Body.Close()
 
@@ -91,6 +117,7 @@ func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresq
 
 	if err := json.NewDecoder(bodyJSON).Decode(&scoringSystem); err != nil {
 		constants.Logger.InfoLog(fmt.Sprintf("$$ 3 %s", err.Error()))
+		fullScoringSystem.ScoringSystem = new(postgresql.ScoringSystem)
 		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		return fullScoringSystem
 	}
@@ -171,9 +198,19 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 		return
 	}
 	defer conn.Release()
-	rows, err = conn.Query(ctx,
-		fmt.Sprintf(`SELECT * FROM gofermart.orders AS orders
-							WHERE "orderID"=$1 and "%s" ISNULL;`, nameColum), order)
+
+	if _, err = conn.Query(ctx,
+		fmt.Sprintf(`UPDATE gofermart.orders
+					SET "%s"=$2
+					WHERE "orderID"=$1;`, nameColum), order, time.Now()); err != nil {
+
+		_ = tx.Rollback(ctx)
+		constants.Logger.ErrorLog(err)
+		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
+		return
+	}
+	conn.Release()
+
 	if err != nil {
 		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
 		_ = tx.Rollback(ctx)
@@ -182,21 +219,6 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 	}
 	defer rows.Close()
 
-	if rows.Next() {
-		_ = tx.Rollback(ctx)
-		return
-	}
-
-	if _, err = conn.Query(ctx,
-		fmt.Sprintf(`UPDATE gofermart.orders
-					SET "%s"=$2
-					WHERE "orderID"=$1;`, nameColum), order, time.Now()); err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		constants.Logger.ErrorLog(err)
-		_ = tx.Rollback(ctx)
-		return
-	}
-	conn.Release()
 	_ = tx.Commit(ctx)
 
 	fullScoringSystem.HTTPStatus = http.StatusOK
@@ -250,12 +272,12 @@ type OrderSS struct {
 	GoodOrderSS []GoodOrderSS `json:"goods"`
 }
 
-func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
+func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) int {
 
 	jsonStr, err := json.MarshalIndent(orderSS, "", " ")
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		return
+		return http.StatusInternalServerError
 	}
 
 	bufJSONStr := bytes.NewBuffer(jsonStr)
@@ -263,7 +285,7 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
 	req, err := http.NewRequest("POST", addressPost, bufJSONStr)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		return
+		return http.StatusInternalServerError
 	}
 	defer req.Body.Close()
 
@@ -273,12 +295,10 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
 	resp, err := client.Do(req)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		return
+		return http.StatusInternalServerError
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("response Status:", resp.Status)
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("response Body:", string(body))
+	return resp.StatusCode
 
 }
