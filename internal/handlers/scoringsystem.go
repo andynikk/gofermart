@@ -277,11 +277,6 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
 	}
 	defer resp.Body.Close()
 
-	//resp, err := http.Post(addressPost, "application/json", bufJSONStr)
-	//if err != nil {
-	//	constants.Logger.ErrorLog(err)
-	//	return
-	//}
 	fmt.Println("response Status:", resp.Status)
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))

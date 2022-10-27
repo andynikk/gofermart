@@ -3,8 +3,7 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"math"
-	"math/rand"
+	"github.com/andynikk/gofermart/internal/random"
 	"net/http"
 	"time"
 
@@ -200,8 +199,7 @@ func (o *Order) SetNextStatus() {
 		nextStatus := ""
 		switch ord.Status {
 		case constants.StatusPROCESSING.String():
-			rand.Seed(time.Now().UnixNano())
-			randStatus := 2 + rand.Intn(3-2+1)
+			randStatus := random.RandInt(2, 3)
 			if randStatus == 3 {
 				nextStatus = "failedAt"
 			} else {
@@ -239,8 +237,7 @@ func (o *Order) SetNextStatus() {
 				return
 			}
 
-			randVal := min + rand.Float64()*(max-min)
-			accrual := math.Ceil(randVal*100) / 100
+			accrual := random.RandPriceItem(min, max)
 			if _, err = conn.Query(ctx, constants.QueryAddAccrual, &val.Number, accrual, time.Now(), "PLUS"); err != nil {
 				constants.Logger.ErrorLog(err)
 				continue

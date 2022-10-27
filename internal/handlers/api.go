@@ -5,16 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/random"
+	"github.com/gorilla/mux"
+	"github.com/theplant/luhn"
 	"io"
-	"math"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/gorilla/mux"
-	"github.com/theplant/luhn"
 
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
@@ -255,9 +252,12 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	min := 1000.00
+	max := 3000.00
+
 	goodOrderSS := new(GoodOrderSS)
-	goodOrderSS.Description = NameItem()
-	goodOrderSS.Price = PriceItem()
+	goodOrderSS.Description = random.RandNameItem(2, 3)
+	goodOrderSS.Price = random.RandPriceItem(min, max)
 
 	var arrGoodOrderSS []GoodOrderSS
 	arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
@@ -269,23 +269,6 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	srv.AddOrderScoringSystem(&orderSS)
 
 	cancelFunc()
-}
-
-func NameItem() string {
-	rand.Seed(time.Now().UnixNano())
-	randStatus := 2 + rand.Intn(3-2+1)
-	if randStatus == 3 {
-		return "My table"
-	}
-	return "You table"
-}
-
-func PriceItem() float64 {
-	min := 1000.00
-	max := 3000.00
-
-	randVal := min + rand.Float64()*(max-min)
-	return math.Ceil(randVal*100) / 100
 }
 
 // 4 TODO: Списание баллов лояльности
