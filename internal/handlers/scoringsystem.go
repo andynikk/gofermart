@@ -258,9 +258,9 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
 		return
 	}
 
-	bufJsonStr := bytes.NewBuffer(jsonStr)
+	bufJSONStr := bytes.NewBuffer(jsonStr)
 	addressPost := fmt.Sprintf("http://%s/api/orders", srv.AddressAcSys)
-	req, err := http.NewRequest("POST", addressPost, bufJsonStr)
+	req, err := http.NewRequest("POST", addressPost, bufJSONStr)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		return
@@ -277,7 +277,7 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
 	}
 	defer resp.Body.Close()
 
-	//resp, err := http.Post(addressPost, "application/json", bufJsonStr)
+	//resp, err := http.Post(addressPost, "application/json", bufJSONStr)
 	//if err != nil {
 	//	constants.Logger.ErrorLog(err)
 	//	return
