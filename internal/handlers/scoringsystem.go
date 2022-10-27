@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -199,4 +200,90 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 	_ = tx.Commit(ctx)
 
 	fullScoringSystem.HTTPStatus = http.StatusOK
+}
+
+type Goods struct {
+	Match      string  `json:"match"`
+	Reward     float64 `json:"reward"`
+	RewardType string  `json:"reward_type"`
+}
+
+func (srv *Server) AddItemsScoringSystem(good *Goods) {
+
+	jsonStr, err := json.MarshalIndent(good, "", " ")
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+
+	addressPost := fmt.Sprintf("http://%s/api/goods", srv.AddressAcSys)
+	req, err := http.NewRequest("POST", addressPost, bytes.NewBuffer(jsonStr))
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+	defer req.Body.Close()
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("response Status:", resp.Status)
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
+
+}
+
+type GoodOrderSS struct {
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+}
+
+type OrderSS struct {
+	Order       string        `json:"order"`
+	GoodOrderSS []GoodOrderSS `json:"goods"`
+}
+
+func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) {
+
+	jsonStr, err := json.MarshalIndent(orderSS, "", " ")
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+
+	bufJsonStr := bytes.NewBuffer(jsonStr)
+	addressPost := fmt.Sprintf("http://%s/api/orders", srv.AddressAcSys)
+	req, err := http.NewRequest("POST", addressPost, bufJsonStr)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+	defer req.Body.Close()
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	//resp, err := http.Post(addressPost, "application/json", bufJsonStr)
+	//if err != nil {
+	//	constants.Logger.ErrorLog(err)
+	//	return
+	//}
+	fmt.Println("response Status:", resp.Status)
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
+
 }

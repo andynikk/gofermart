@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
@@ -238,17 +241,51 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	// 3.1.1 TODO: Ищем ордер по номеру. Если не находим, то создаем
 	rez := order.NewOrder()
 	w.WriteHeader(rez)
-	if rez == http.StatusOK {
-		if err := tx.Commit(ctx); err != nil {
-			constants.Logger.ErrorLog(err)
-		}
-	} else {
+	if rez != http.StatusAccepted {
 		if err := tx.Rollback(ctx); err != nil {
 			constants.Logger.ErrorLog(err)
 		}
+		cancelFunc = nil
+		return
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		constants.Logger.ErrorLog(err)
+		cancelFunc = nil
+		return
+	}
+
+	goodOrderSS := new(GoodOrderSS)
+	goodOrderSS.Description = NameItem()
+	goodOrderSS.Price = PriceItem()
+
+	var arrGoodOrderSS []GoodOrderSS
+	arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
+
+	orderSS := OrderSS{
+		order.Number,
+		arrGoodOrderSS,
+	}
+	srv.AddOrderScoringSystem(&orderSS)
+
 	cancelFunc()
+}
+
+func NameItem() string {
+	rand.Seed(time.Now().UnixNano())
+	randStatus := 2 + rand.Intn(3-2+1)
+	if randStatus == 3 {
+		return "My table"
+	}
+	return "You table"
+}
+
+func PriceItem() float64 {
+	min := 1000.00
+	max := 3000.00
+
+	randVal := min + rand.Float64()*(max-min)
+	return math.Ceil(randVal*100) / 100
 }
 
 // 4 TODO: Списание баллов лояльности

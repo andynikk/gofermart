@@ -25,6 +25,7 @@ func NewServer() (srv *Server) {
 	srv.initRouters()
 	srv.InitDB()
 	srv.InitCFG()
+	srv.InitScoringSystem()
 
 	return srv
 }
