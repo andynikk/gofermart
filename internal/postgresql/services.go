@@ -103,7 +103,7 @@ func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {
 	if rows.Next() {
 		ou := new(OrderUser)
 
-		err = rows.Scan(&ou.User, &ou.Number, &ou.CreatedAt, &ou.StartedAt, &ou.FinishedAt, &ou.FailedAt, &ou.Status)
+		_ = rows.Scan(&ou.User, &ou.Number, &ou.CreatedAt, &ou.StartedAt, &ou.FinishedAt, &ou.FailedAt, &ou.Status)
 		if ou.User == claims["user"] {
 			answerBD.Answer = constants.AnswerSuccessfully
 		} else {

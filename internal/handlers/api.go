@@ -183,16 +183,18 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		string(respByte),
 		arrGoodOrderSS,
 	}
-	answer, err = srv.AddOrderScoringSystem(&orderSS)
+	err = srv.AddOrderScoringSystem(&orderSS)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		return
 	}
+
 	answer, err = srv.DBConnector.SetStartedAt(numOrder)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		return
 	}
+	w.WriteHeader(HTTPAnswer(answer.Answer))
 }
 
 // 4 TODO: Списание баллов лояльности

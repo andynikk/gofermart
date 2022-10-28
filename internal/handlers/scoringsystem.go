@@ -189,18 +189,18 @@ func (srv *Server) AddItemsScoringSystem(good *Goods) {
 
 }
 
-func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) (*postgresql.AnswerBD, error) {
+func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 
 	jsonStr, err := json.MarshalIndent(orderSS, "", " ")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	bufJSONStr := bytes.NewBuffer(jsonStr)
 	addressPost := fmt.Sprintf("http://%s/api/orders", srv.AddressAcSys)
 	req, err := http.NewRequest("POST", addressPost, bufJSONStr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer req.Body.Close()
 
@@ -209,11 +209,11 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) (*postgresql.AnswerBD
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
 	answerBD := new(postgresql.AnswerBD)
 	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
+	return nil
 }
