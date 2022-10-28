@@ -213,7 +213,5 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 	}
 	defer resp.Body.Close()
 
-	answerBD := new(postgresql.AnswerBD)
-	answerBD.Answer = constants.AnswerSuccessfully
 	return nil
 }
