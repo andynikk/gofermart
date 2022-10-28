@@ -18,10 +18,25 @@ import (
 	"github.com/andynikk/gofermart/internal/postgresql"
 )
 
+type Goods struct {
+	Match      string  `json:"match"`
+	Reward     float64 `json:"reward"`
+	RewardType string  `json:"reward_type"`
+}
+
+type GoodOrderSS struct {
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+}
+
+type OrderSS struct {
+	Order       string        `json:"order"`
+	GoodOrderSS []GoodOrderSS `json:"goods"`
+}
+
 func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScoringSystem) {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
-	//getTicker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
@@ -32,48 +47,44 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 			cancelFunc()
 			return
 		default:
-			fullScoringSystem := srv.GetScoringSystem(number)
-			if fullScoringSystem.HTTPStatus != http.StatusTooManyRequests {
-				data <- fullScoringSystem
+			fss, _ := srv.GetScoringSystem(number)
+			if fss.Answer != constants.AnswerTooManyRequests {
+				data <- fss
 			}
 			time.Sleep(1 * time.Second)
 		}
 	}
 }
 
-func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresql.FullScoringSystem) {
-	fullScoringSystem = new(postgresql.FullScoringSystem)
-	scoringSystem := new(postgresql.ScoringSystem)
-	fullScoringSystem.ScoringSystem = scoringSystem
+func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSystem, error) {
+	fullScoringSystem := new(postgresql.FullScoringSystem)
+	ScoringSystem := new(postgresql.ScoringSystem)
+
+	fullScoringSystem.ScoringSystem = ScoringSystem
 
 	ctx := context.Background()
 	conn, err := srv.Pool.Acquire(ctx)
 	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return fullScoringSystem
+		return fullScoringSystem, err
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
 	conn.Release()
 	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return fullScoringSystem
+		return fullScoringSystem, err
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		fullScoringSystem.HTTPStatus = http.StatusUnprocessableEntity
-		return fullScoringSystem
+		fullScoringSystem.Answer = constants.AnswerInvalidOrderNumber
+		return fullScoringSystem, nil
 	}
 
 	addressPost := fmt.Sprintf("http://%s/api/orders/%s", srv.AddressAcSys, number)
 	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-
-		fullScoringSystem.HTTPStatus = http.StatusUnprocessableEntity
-		return fullScoringSystem
+		return fullScoringSystem, err
 	}
 	defer req.Body.Close()
 
@@ -83,151 +94,67 @@ func (srv *Server) GetScoringSystem(number string) (fullScoringSystem *postgresq
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-
-		fullScoringSystem.HTTPStatus = http.StatusUnprocessableEntity
-		return fullScoringSystem
+		return fullScoringSystem, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == 429 {
+		fullScoringSystem.Answer = constants.AnswerTooManyRequests
+		return fullScoringSystem, nil
+	}
 
 	varsAnswer := mux.Vars(req)
 	fmt.Println(varsAnswer)
 
-	bodyJSON := resp.Body
-
+	body := resp.Body
 	contentEncoding := resp.Header.Get("Content-Encoding")
+	err = compression.DecompressBody(contentEncoding, body)
+	if err != nil {
+		return fullScoringSystem, err
+	}
+
 	if strings.Contains(contentEncoding, "gzip") {
 		bytBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			constants.Logger.ErrorLog(err)
-
-			fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-			return fullScoringSystem
+			return fullScoringSystem, err
 		}
 
 		arrBody, err := compression.Decompress(bytBody)
 		if err != nil {
-			constants.Logger.ErrorLog(err)
-
-			fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-			return fullScoringSystem
+			return fullScoringSystem, err
 		}
 		fmt.Println(arrBody)
 	}
 
-	if err := json.NewDecoder(bodyJSON).Decode(&scoringSystem); err != nil {
-		constants.Logger.InfoLog(fmt.Sprintf("$$ 3 %s", err.Error()))
-		fullScoringSystem.ScoringSystem = new(postgresql.ScoringSystem)
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return fullScoringSystem
+	if err = json.NewDecoder(body).Decode(fullScoringSystem.ScoringSystem); err != nil {
+		return fullScoringSystem, err
 	}
 
-	fullScoringSystem.ScoringSystem = scoringSystem
-	fullScoringSystem.HTTPStatus = http.StatusOK
-	return fullScoringSystem
+	fullScoringSystem.Answer = constants.AnswerSuccessfully
+	return fullScoringSystem, nil
 }
 
-func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScoringSystem) {
-
+func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScoringSystem) error {
 	order, err := strconv.Atoi(fullScoringSystem.ScoringSystem.Order)
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return
+		return err
 	}
 
-	ctx := context.Background()
-	conn, err := srv.Pool.Acquire(ctx)
-	fmt.Println("-----3")
+	answer, err := srv.DBConnector.VerificationOrderExists(order)
 	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return
+		return err
 	}
-	defer conn.Release()
+	if answer.Answer != constants.AnswerSuccessfully {
+		return nil
+	}
 
-	rows, err := conn.Query(ctx, constants.QuerySelectAccrualPLUSS, order)
+	answer, err = srv.DBConnector.SetValueScoringSystem(fullScoringSystem)
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-	}
-	if rows.Next() {
-		fullScoringSystem.HTTPStatus = http.StatusConflict
-		return
-	}
-	conn.Release()
-
-	tx, err := srv.Pool.Begin(ctx)
-	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return
+		return err
 	}
 
-	conn, err = srv.Pool.Acquire(ctx)
-	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		_ = tx.Rollback(ctx)
-		return
-	}
-	defer conn.Release()
-
-	if _, err = conn.Query(ctx, constants.QueryAddAccrual,
-		order, fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS"); err != nil {
-
-		_ = tx.Rollback(ctx)
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		constants.Logger.ErrorLog(err)
-		return
-	}
-
-	nameColum := ""
-	switch fullScoringSystem.ScoringSystem.Status {
-	case "REGISTERED":
-		nameColum = "createdAt"
-	case "INVALID":
-		nameColum = "failedAt"
-	case "PROCESSING":
-		nameColum = "startedAt"
-	case "PROCESSED":
-		nameColum = "finishedAt"
-	default:
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return
-	}
-
-	conn, err = srv.Pool.Acquire(ctx)
-	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return
-	}
-	defer conn.Release()
-
-	if _, err = conn.Query(ctx,
-		fmt.Sprintf(`UPDATE gofermart.orders
-					SET "%s"=$2
-					WHERE "orderID"=$1;`, nameColum), order, time.Now()); err != nil {
-
-		_ = tx.Rollback(ctx)
-		constants.Logger.ErrorLog(err)
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		return
-	}
-	conn.Release()
-
-	if err != nil {
-		fullScoringSystem.HTTPStatus = http.StatusInternalServerError
-		_ = tx.Rollback(ctx)
-		constants.Logger.ErrorLog(err)
-		return
-	}
-	defer rows.Close()
-
-	_ = tx.Commit(ctx)
-
-	fullScoringSystem.HTTPStatus = http.StatusOK
-}
-
-type Goods struct {
-	Match      string  `json:"match"`
-	Reward     float64 `json:"reward"`
-	RewardType string  `json:"reward_type"`
+	fullScoringSystem.Answer = answer.Answer
+	return nil
 }
 
 func (srv *Server) AddItemsScoringSystem(good *Goods) {
@@ -262,30 +189,18 @@ func (srv *Server) AddItemsScoringSystem(good *Goods) {
 
 }
 
-type GoodOrderSS struct {
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-}
-
-type OrderSS struct {
-	Order       string        `json:"order"`
-	GoodOrderSS []GoodOrderSS `json:"goods"`
-}
-
-func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) int {
+func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) (*postgresql.AnswerBD, error) {
 
 	jsonStr, err := json.MarshalIndent(orderSS, "", " ")
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return http.StatusInternalServerError
+		return nil, err
 	}
 
 	bufJSONStr := bytes.NewBuffer(jsonStr)
 	addressPost := fmt.Sprintf("http://%s/api/orders", srv.AddressAcSys)
 	req, err := http.NewRequest("POST", addressPost, bufJSONStr)
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return http.StatusInternalServerError
+		return nil, err
 	}
 	defer req.Body.Close()
 
@@ -294,11 +209,11 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) int {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return http.StatusInternalServerError
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return resp.StatusCode
-
+	answerBD := new(postgresql.AnswerBD)
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
 }

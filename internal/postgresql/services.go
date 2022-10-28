@@ -2,157 +2,249 @@ package postgresql
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/random"
-	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/cryptography"
+	"github.com/andynikk/gofermart/internal/random"
 	"github.com/andynikk/gofermart/internal/token"
 )
 
-func (a *Account) NewAccount() int {
-	ctx := context.Background()
-	conn, err := a.Pool.Acquire(ctx)
-	if err != nil {
-		return http.StatusInternalServerError
-	}
+func (dbc *DBConnector) NewAccount(name string, password string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+	answerBD.Answer = constants.AnswerSuccessfully
 
-	rows, err := conn.Query(ctx, constants.QuerySelectUserWithWhereTemplate, a.Name)
+	ctx := context.Background()
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		conn.Release()
-		return http.StatusBadRequest
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, constants.QuerySelectUserWithWhereTemplate, name)
+	if err != nil {
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		return http.StatusConflict
+		answerBD.Answer = constants.AnswerLoginBusy
+		return answerBD, nil
 	}
 
-	heshVal := cryptography.HeshSHA256(a.Password, a.Key)
+	heshVal := cryptography.HeshSHA256(password, dbc.Cfg.Key)
 
-	if _, err := conn.Exec(ctx, constants.QueryAddUserTemplate, a.Name, heshVal); err != nil {
+	if _, err := conn.Exec(ctx, constants.QueryAddUserTemplate, name, heshVal); err != nil {
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
+	}
+	conn.Release()
+
+	return answerBD, err
+}
+
+func (dbc *DBConnector) GetAccount(name string, password string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+	answerBD.Answer = constants.AnswerInvalidLoginPassword
+
+	ctx := context.Background()
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	heshVal := cryptography.HeshSHA256(password, dbc.Cfg.Key)
+	rows, err := conn.Query(ctx, constants.QuerySelectUserWithPasswordTemplate, name, heshVal)
+	if err != nil {
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		answerBD.Answer = constants.AnswerSuccessfully
+		return answerBD, nil
+	}
+	conn.Release()
+
+	return answerBD, nil
+}
+
+func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
+	ctx := context.Background()
+	claims, ok := token.ExtractClaims(tkn)
+	if !ok {
+		answerBD.Answer = constants.AnswerUserNotAuthenticated
+		return answerBD, nil
+	}
+
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
+	if err != nil {
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		ou := new(OrderUser)
+
+		err = rows.Scan(&ou.User, &ou.Number, &ou.CreatedAt, &ou.StartedAt, &ou.FinishedAt, &ou.FailedAt, &ou.Status)
+		if ou.User == claims["user"] {
+			answerBD.Answer = constants.AnswerSuccessfully
+		} else {
+			answerBD.Answer = constants.AnswerUploadedAnotherUser
+		}
+
+		return answerBD, nil
+	}
+
+	conn, err = dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now()); err != nil {
 		constants.Logger.ErrorLog(err)
-		conn.Release()
-		return http.StatusBadRequest
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
 	}
-	conn.Release()
 
-	return http.StatusOK
+	/////////////////////////////////////////////////////////////////
+
+	answerBD.Answer = constants.AnswerAccepted
+	return answerBD, nil
 }
 
-func (a *Account) GetAccount() int {
+func (dbc *DBConnector) SetStartedAt(number int) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
 	ctx := context.Background()
-	conn, err := a.Pool.Acquire(ctx)
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return http.StatusInternalServerError
+		return nil, err
 	}
 	defer conn.Release()
 
-	heshVal := cryptography.HeshSHA256(a.Password, a.Key)
-	rows, err := conn.Query(ctx, constants.QuerySelectUserWithPasswordTemplate, a.Name, heshVal)
+	rows, err := conn.Query(ctx, constants.QueryUpdateStartedAt, time.Now(), number)
 	if err != nil {
 		conn.Release()
-		return http.StatusBadRequest
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
 	}
 	defer rows.Close()
 
-	if rows.Next() {
-		return http.StatusOK
-	}
-	conn.Release()
-
-	return http.StatusUnauthorized
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
 }
 
-func (a *Account) UserOrders() int {
+func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
 	ctx := context.Background()
-	conn, err := a.Pool.Acquire(ctx)
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return http.StatusInternalServerError
+		return nil, err
 	}
 	defer conn.Release()
 
-	rows, err := conn.Query(ctx, constants.QueryUserOrdersTemplate, a.Name)
-	if err != nil {
-		conn.Release()
-		return http.StatusBadRequest
+	claims, ok := token.ExtractClaims(tkn)
+	if !ok {
+		answerBD.Answer = constants.AnswerUserNotAuthenticated
+		return answerBD, nil
 	}
-	defer rows.Close()
+
+	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], number)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		return nil, err
+	}
+	if !rows.Next() {
+		answerBD.Answer = constants.AnswerInvalidOrderNumber
+		return answerBD, nil
+	}
+	conn.Release()
+
+	conn, err = dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err = conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		answerBD.Answer = constants.AnswerInvalidOrderNumber
+		return answerBD, nil
+	}
 
 	for rows.Next() {
-		return http.StatusConflict
+		var bdb BalansDB
+
+		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
+		if err != nil {
+			return nil, err
+		}
+		if bdb.Total < sumWithdraw {
+			answerBD.Answer = constants.AnswerInsufficientFunds
+			return answerBD, nil
+		}
 	}
+	conn.Release()
 
-	return http.StatusOK
-}
-
-func (o *Order) NewOrder() int {
-
-	ctx := context.Background()
-	claims, ok := token.ExtractClaims(o.Token)
-	if !ok {
-		constants.Logger.InfoLog("error extract claims")
-		return http.StatusUnauthorized
-	}
-
-	conn, err := o.Pool.Acquire(ctx)
+	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return http.StatusInternalServerError
+		return nil, err
 	}
 	defer conn.Release()
-
-	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], o.Number)
-	conn.Release()
-	if err != nil {
-		return http.StatusBadRequest
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		return http.StatusOK
+	//TODO: Добавляем спсанные баллы
+	if _, err = conn.Query(ctx, constants.QueryAddAccrual, number, sumWithdraw, time.Now(), "MINUS"); err != nil {
+		return nil, err
 	}
 
-	conn, err = o.Pool.Acquire(ctx)
-	if err != nil {
-		return http.StatusInternalServerError
-	}
-	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], o.Number, time.Now()); err != nil {
-		constants.Logger.ErrorLog(err)
-		conn.Release()
-		return http.StatusBadRequest
-	}
-	conn.Release()
-
-	return http.StatusAccepted
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
 }
 
-func (o *Order) ListOrder() ([]orderDB, int) {
-	var arrOrders []orderDB
+func (dbc *DBConnector) ListOrder(tkn string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
 
 	ctx := context.Background()
 
-	claims, ok := token.ExtractClaims(o.Token)
+	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		constants.Logger.InfoLog("error extract claims")
-		return arrOrders, http.StatusUnauthorized
+		answerBD.Answer = constants.AnswerUserNotAuthenticated
+		return answerBD, nil
 	}
 
-	conn, err := o.Pool.Acquire(ctx)
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return arrOrders, http.StatusInternalServerError
+		return nil, err
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, claims["user"])
 	if err != nil {
-		return arrOrders, http.StatusBadRequest
+		return nil, err
 	}
 	defer rows.Close()
 
+	var arrOrders []orderDB
 	for rows.Next() {
 		var ord orderDB
 
@@ -165,25 +257,150 @@ func (o *Order) ListOrder() ([]orderDB, int) {
 	}
 
 	if len(arrOrders) == 0 {
-		return arrOrders, http.StatusNoContent
+		answerBD.Answer = constants.AnswerNoContent
+		return answerBD, nil
 	}
 
-	return arrOrders, http.StatusOK
+	listOrderJSON, err := json.MarshalIndent(arrOrders, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	answerBD.JSON = listOrderJSON
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
 }
 
-func (o *Order) SetNextStatus() {
+func (dbc *DBConnector) BalansOrders(tkn string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
+	ctx := context.Background()
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	claims, ok := token.ExtractClaims(tkn)
+	if !ok {
+		answerBD.Answer = constants.AnswerUserNotAuthenticated
+		return answerBD, nil
+	}
+
+	rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+
+		answerBD.Answer = constants.AnswerNoContent
+		return answerBD, nil
+	}
+
+	var bdb BalansDB
+	err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
+	if err != nil {
+		return nil, err
+	}
+
+	listBalansJSON, err := json.MarshalIndent(bdb, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	answerBD.JSON = listBalansJSON
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
+
+}
+
+func (dbc *DBConnector) UserWithdrawal(tkn string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
+	ctx := context.Background()
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	claims, ok := token.ExtractClaims(tkn)
+	if !ok {
+		answerBD.Answer = constants.AnswerUserNotAuthenticated
+		return answerBD, nil
+	}
+
+	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
+	if err != nil {
+		answerBD.Answer = constants.AnswerInvalidFormat
+		return answerBD, nil
+	}
+	defer rows.Close()
+
+	var arrWithdraw []withdrawDB
+	for rows.Next() {
+		var bdb withdrawDB
+
+		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw, &bdb.Current)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			continue
+		}
+		arrWithdraw = append(arrWithdraw, bdb)
+	}
+
+	if len(arrWithdraw) == 0 {
+		answerBD.Answer = constants.AnswerNoContent
+		return answerBD, nil
+	}
+
+	listWithdrawalJSON, err := json.MarshalIndent(arrWithdraw, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	answerBD.JSON = listWithdrawalJSON
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
+}
+
+func (dbc *DBConnector) UserOrders(name string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
+	ctx := context.Background()
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, constants.QueryUserOrdersTemplate, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		answerBD.Answer = constants.AnswerConflict
+		return answerBD, nil
+	}
+
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
+}
+
+func (dbc *DBConnector) SetNextStatus() (*AnswerBD, error) {
 	var arrOrders []orderDB
 
 	ctx := context.Background()
-	conn, err := o.Pool.Acquire(ctx)
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return
+		return nil, err
 	}
+	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, "")
 	if err != nil {
-		conn.Release()
-		return
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -217,11 +434,10 @@ func (o *Order) SetNextStatus() {
 	max := 501.98
 
 	for _, val := range arrOrders {
-		conn, err := o.Pool.Acquire(ctx)
+		conn, err := dbc.Pool.Acquire(ctx)
 		if err != nil {
-			return
+			return nil, err
 		}
-
 		if _, err = conn.Query(ctx,
 			fmt.Sprintf(`UPDATE gofermart.orders
 					SET "%s"=$2
@@ -232,9 +448,9 @@ func (o *Order) SetNextStatus() {
 		conn.Release()
 
 		if val.Status == "finishedAt" {
-			conn, err := o.Pool.Acquire(ctx)
+			conn, err := dbc.Pool.Acquire(ctx)
 			if err != nil {
-				return
+				return nil, err
 			}
 			defer conn.Release()
 
@@ -243,76 +459,38 @@ func (o *Order) SetNextStatus() {
 				constants.Logger.ErrorLog(err)
 				continue
 			}
-			//if _, err = conn.Query(ctx, constants.QueryUpdateFinishedAt, time.Now(), &val.Number); err != nil {
-			//	constants.Logger.ErrorLog(err)
-			//	continue
-			//}
 			conn.Release()
 		}
-
-		conn.Release()
 	}
+
+	answerBD := new(AnswerBD)
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
 }
 
-func (o *Order) BalansOrders() (BalansDB, int) {
-	var bdb BalansDB
-
-	ctx := context.Background()
-
-	conn, err := o.Pool.Acquire(ctx)
-	if err != nil {
-		return bdb, http.StatusInternalServerError
-	}
-	defer conn.Release()
-
-	claims, ok := token.ExtractClaims(o.Token)
-	if !ok {
-		constants.Logger.InfoLog("error extract claims")
-		return bdb, http.StatusUnauthorized
-	}
-
-	rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
-	if err != nil {
-		conn.Release()
-		return bdb, http.StatusBadRequest
-	}
-	defer rows.Close()
-
-	if rows.Next() {
-		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			return bdb, http.StatusNoContent
-		}
-	} else {
-		return bdb, http.StatusNoContent
-	}
-
-	return bdb, http.StatusOK
-}
-
-func (o *Order) UserWithdrawal() ([]withdrawDB, int) {
+func (dbc *DBConnector) UserAccrual(tkn string) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
 	var arrWithdraw []withdrawDB
 
 	ctx := context.Background()
-	conn, err := o.Pool.Acquire(ctx)
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return arrWithdraw, http.StatusInternalServerError
+		return nil, err
 	}
 	defer conn.Release()
 
-	claims, ok := token.ExtractClaims(o.Token)
+	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		constants.Logger.InfoLog("error extract claims")
-		return arrWithdraw, http.StatusUnauthorized
+		answerBD.Answer = constants.AnswerUserNotAuthenticated
+		return answerBD, nil
 	}
 
 	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
 	if err != nil {
-		conn.Release()
-		return arrWithdraw, http.StatusBadRequest
+		return nil, err
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var bdb withdrawDB
 
@@ -325,139 +503,32 @@ func (o *Order) UserWithdrawal() ([]withdrawDB, int) {
 	}
 
 	if len(arrWithdraw) == 0 {
-		return arrWithdraw, http.StatusNoContent
+		answerBD.Answer = constants.AnswerNoContent
+		return answerBD, nil
 	}
 
-	return arrWithdraw, http.StatusOK
+	listWithdrawalJSON, err := json.MarshalIndent(arrWithdraw, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	answerBD.JSON = listWithdrawalJSON
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
 }
 
-func (o *Order) UserAccrual() ([]withdrawDB, int) {
-	var arrWithdraw []withdrawDB
-
-	ctx := context.Background()
-	conn, err := o.Pool.Acquire(ctx)
-	if err != nil {
-		return arrWithdraw, http.StatusInternalServerError
-	}
-	defer conn.Release()
-
-	claims, ok := token.ExtractClaims(o.Token)
-	if !ok {
-		constants.Logger.InfoLog("error extract claims")
-		return arrWithdraw, http.StatusUnauthorized
-	}
-
-	//rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], 0, "MINUS")
-	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
-	if err != nil {
-		conn.Release()
-		return arrWithdraw, http.StatusBadRequest
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var bdb withdrawDB
-
-		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw, &bdb.Current)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			continue
-		}
-		arrWithdraw = append(arrWithdraw, bdb)
-	}
-
-	if len(arrWithdraw) == 0 {
-		return arrWithdraw, http.StatusNoContent
-	}
-
-	return arrWithdraw, http.StatusOK
-}
-
-func (ow *OrderWithdraw) TryWithdraw() int {
-
-	ctx := context.Background()
-	conn, err := ow.Pool.Acquire(ctx)
-	if err != nil {
-		return http.StatusInternalServerError
-	}
-	defer conn.Release()
-
-	claims, ok := token.ExtractClaims(ow.Token)
-	if !ok {
-		constants.Logger.InfoLog("error extract claims")
-		return http.StatusUnauthorized
-	}
-
-	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], ow.Order)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		conn.Release()
-		return http.StatusInternalServerError
-	}
-	if !rows.Next() {
-		constants.Logger.ErrorLog(err)
-		conn.Release()
-		return http.StatusUnprocessableEntity
-	}
-	conn.Release()
-
-	conn, err = ow.Pool.Acquire(ctx)
-	if err != nil {
-		return http.StatusInternalServerError
-	}
-	defer conn.Release()
-
-	rows, err = conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], ow.Order)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		conn.Release()
-		return http.StatusUnprocessableEntity
-	}
-
-	sumWithdraw := ow.Withdraw
-	for rows.Next() {
-		var bdb BalansDB
-
-		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			//conn.Release()
-			//return http.StatusInternalServerError
-		}
-		if bdb.Total < sumWithdraw {
-			constants.Logger.ErrorLog(err)
-			conn.Release()
-			return http.StatusPaymentRequired
-		}
-	}
-	conn.Release()
-
-	conn, err = ow.Pool.Acquire(ctx)
-	if err != nil {
-		return http.StatusInternalServerError
-	}
-	defer conn.Release()
-	//TODO: Добавляем спсанные баллы
-	if _, err = conn.Query(ctx, constants.QueryAddAccrual, ow.Order, sumWithdraw, time.Now(), "MINUS"); err != nil {
-		constants.Logger.ErrorLog(err)
-		return http.StatusInternalServerError
-	}
-
-	return http.StatusOK
-}
-
-func (cfg *Cfg) ListNotAccrualOrders() ([]orderDB, int) {
+func (dbc *DBConnector) ListNotAccrualOrders() (*AnswerBD, error) {
 	var arrOrderDB []orderDB
 
 	ctx := context.Background()
-	conn, err := cfg.Pool.Acquire(ctx)
+	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return arrOrderDB, http.StatusInternalServerError
+		return nil, err
 	}
 
 	rows, err := conn.Query(ctx, `SELECT * FROM gofermart.orders AS orders WHERE `+
 		`orders."finishedAt" ISNULL AND orders."failedAt" ISNULL`)
 	if err != nil {
-		return arrOrderDB, http.StatusInternalServerError
+		return nil, err
 	}
 
 	for rows.Next() {
@@ -474,7 +545,100 @@ func (cfg *Cfg) ListNotAccrualOrders() ([]orderDB, int) {
 		arrOrderDB = append(arrOrderDB, ord)
 	}
 
-	return arrOrderDB, http.StatusOK
+	answerBD := new(AnswerBD)
+	listWithdrawalJSON, err := json.MarshalIndent(arrOrderDB, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	answerBD.JSON = listWithdrawalJSON
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, nil
+}
+
+func (dbc *DBConnector) VerificationOrderExists(number int) (*AnswerBD, error) {
+	answerBD := new(AnswerBD)
+
+	ctx := context.Background()
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err := conn.Query(ctx, constants.QuerySelectAccrualPLUSS, number)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		answerBD.Answer = constants.AnswerConflict
+		return answerBD, err
+	}
+
+	answerBD.Answer = constants.AnswerSuccessfully
+	return answerBD, err
+}
+
+func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSystem) (*AnswerBD, error) {
+
+	answer := new(AnswerBD)
+
+	ctx := context.Background()
+	tx, err := dbc.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := dbc.Pool.Acquire(ctx)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+	defer conn.Release()
+
+	if _, err = conn.Query(ctx, constants.QueryAddAccrual,
+		fullScoringSystem.ScoringSystem.Order, fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS"); err != nil {
+
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+	conn.Release()
+
+	nameColum := ""
+	switch fullScoringSystem.ScoringSystem.Status {
+	case "REGISTERED":
+		nameColum = "createdAt"
+	case "INVALID":
+		nameColum = "failedAt"
+	case "PROCESSING":
+		nameColum = "startedAt"
+	case "PROCESSED":
+		nameColum = "finishedAt"
+	default:
+		err := errors.New("непределен статус")
+		return nil, err
+	}
+
+	conn, err = dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	if _, err = conn.Query(ctx,
+		fmt.Sprintf(`UPDATE gofermart.orders
+					SET "%s"=$2
+					WHERE "orderID"=$1;`, nameColum), fullScoringSystem.ScoringSystem.Order, time.Now()); err != nil {
+
+		_ = tx.Rollback(ctx)
+		return nil, err
+	}
+
+	_ = tx.Commit(ctx)
+
+	answer.Answer = constants.AnswerSuccessfully
+	return answer, nil
 }
 
 func CreateModeLDB(Pool *pgxpool.Pool) {

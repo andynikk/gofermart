@@ -1,10 +1,10 @@
-package web
+package handlers
 
 import (
 	"fmt"
 )
 
-func StartPage(host string) string {
+func (srv *Server) StartPage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -38,12 +38,13 @@ func StartPage(host string) string {
 				<p><a href="http://%s/docs/user/accrual" target="_self">Получить информацию о начислении баллов лояльности 
 						по заказу</a></p>
 				</body>
-				</html>`, host, host, host, host, host, host, host, host)
+				</html>`, srv.Address, srv.Address, srv.Address, srv.Address, srv.Address, srv.Address, srv.Address,
+		srv.Address)
 
 	return content
 }
 
-func RegisterPage(host string) string {
+func (srv *Server) RegisterPage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -89,12 +90,12 @@ func RegisterPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host, host)
+				</html>`, srv.Address, srv.Address)
 
 	return content
 }
 
-func LoginPage(host string) string {
+func (srv *Server) LoginPage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -141,12 +142,12 @@ func LoginPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host, host, host)
+				</html>`, srv.Address, srv.Address, srv.Address)
 
 	return content
 }
 
-func OrderPage(host string) string {
+func (srv *Server) OrderPage() string {
 
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
@@ -185,12 +186,12 @@ func OrderPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host, host)
+				</html>`, srv.Address, srv.Address)
 
 	return content
 }
 
-func OrdersPage(host string) string {
+func (srv *Server) OrdersPage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -219,12 +220,12 @@ func OrdersPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host)
+				</html>`, srv.Address)
 
 	return content
 }
 
-func BalancePage(host string) string {
+func (srv *Server) BalancePage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -259,12 +260,12 @@ func BalancePage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host, host)
+				</html>`, srv.Address, srv.Address)
 
 	return content
 }
 
-func BalanceWithdrawPage(host string) string {
+func (srv *Server) BalanceWithdrawPage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -310,12 +311,12 @@ func BalanceWithdrawPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host, host)
+				</html>`, srv.Address, srv.Address)
 
 	return content
 }
 
-func BalanceWithdrawsPage(host string) string {
+func (srv *Server) BalanceWithdrawsPage() string {
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
 				<head>
@@ -344,12 +345,12 @@ func BalanceWithdrawsPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host)
+				</html>`, srv.Address)
 
 	return content
 }
 
-func AccrualPage(host string) string {
+func (srv *Server) AccrualPage() string {
 
 	content := fmt.Sprintf(`<!DOCTYPE html>
 				<html>
@@ -388,7 +389,7 @@ func AccrualPage(host string) string {
 					}
 				</script>
 				</body>
-				</html>`, host, host)
+				</html>`, srv.Address, srv.Address)
 
 	return content
 }

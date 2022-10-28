@@ -4,12 +4,14 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/environment"
 )
 
-type Cfg struct {
-	Token string
-	*pgxpool.Pool
-	Key string `json:"key"`
+type AnswerBD struct {
+	Answer constants.Answer
+	JSON   []byte
 }
 
 type User struct {
@@ -17,20 +19,19 @@ type User struct {
 	Password string `json:"password"`
 }
 
-type Account struct {
-	User
-	*Cfg
-}
-
-type Order struct {
-	Number string
-	*Cfg
+type OrderUser struct {
+	Number     string    `json:"orderID"`
+	User       string    `json:"userID"`
+	CreatedAt  time.Time `json:"createdAt"`
+	StartedAt  time.Time `json:"startedAt"`
+	FinishedAt time.Time `json:"finishedAt"`
+	FailedAt   time.Time `json:"failedAt"`
+	Status     string    `json:"status"`
 }
 
 type OrderWithdraw struct {
 	Order    string  `json:"order"`
 	Withdraw float64 `json:"sum"`
-	*Cfg
 }
 
 type orderDB struct {
@@ -55,11 +56,26 @@ type withdrawDB struct {
 
 type FullScoringSystem struct {
 	ScoringSystem *ScoringSystem
-	HTTPStatus    int
+	Answer        constants.Answer
 }
 
 type ScoringSystem struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
 	Accrual float64 `json:"accrual"`
+}
+
+type GoodOrderSS struct {
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+}
+
+type OrderSS struct {
+	Order       string        `json:"order"`
+	GoodOrderSS []GoodOrderSS `json:"goods"`
+}
+
+type DBConnector struct {
+	Pool *pgxpool.Pool
+	Cfg  *environment.DBConfig
 }

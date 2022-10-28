@@ -7,12 +7,27 @@ import (
 )
 
 type Statuses int
+type Answer int
 
 const (
 	StatusNEW Statuses = iota
 	StatusPROCESSING
 	StatusINVALID
 	StatusPROCESSED
+
+	AnswerSuccessfully  Answer = iota //200
+	AnswerInvalidFormat               //
+	AnswerLoginBusy
+	AnswerErrorServer
+	AnswerInvalidLoginPassword
+	AnswerUserNotAuthenticated
+	AnswerAccepted
+	AnswerUploadedAnotherUser
+	AnswerInvalidOrderNumber
+	AnswerInsufficientFunds
+	AnswerNoContent
+	AnswerConflict
+	AnswerTooManyRequests
 
 	PortServer      = "localhost:8080"
 	PortAcSysServer = "localhost:8000"
@@ -173,12 +188,6 @@ const (
 
 	QueryUpdateStartedAt = `UPDATE gofermart.orders
 								SET "startedAt" = $1
-								WHERE "orderID" = $2;`
-	QueryUpdateFinishedAt = `UPDATE gofermart.orders
-								SET "finishedAt" = $1
-								WHERE "orderID" = $2;`
-	QueryUpdateFailedAt = `UPDATE gofermart.orders
-								SET "failedAt" = $1
 								WHERE "orderID" = $2;`
 )
 

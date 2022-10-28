@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"bytes"
-	"github.com/andynikk/gofermart/internal/token"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/gorilla/mux"
 
@@ -12,7 +15,7 @@ import (
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/environment"
 	"github.com/andynikk/gofermart/internal/postgresql"
-	"github.com/andynikk/gofermart/internal/web"
+	"github.com/andynikk/gofermart/internal/token"
 )
 
 type Server struct {
@@ -21,7 +24,7 @@ type Server struct {
 	*environment.ServerConfig
 }
 
-func NewServer() (srv *Server) {
+func NewByConfig() (srv *Server) {
 	srv = new(Server)
 	srv.initRouters()
 	srv.InitDB()
@@ -31,9 +34,26 @@ func NewServer() (srv *Server) {
 	return srv
 }
 
+func (srv *Server) Run() {
+	go func() {
+		s := &http.Server{
+			Addr:    srv.Address,
+			Handler: srv.Router}
+
+		if err := s.ListenAndServe(); err != nil {
+			log.Fatalln(err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	<-stop
+	srv.Shutdown()
+}
+
 func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.StartPage(srv.Address)
+	content := srv.StartPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -139,4 +159,53 @@ func (srv *Server) InitScoringSystem() {
 		"%",
 	}
 	srv.AddItemsScoringSystem(&good)
+}
+
+func HTTPAnswer(answer constants.Answer) int {
+
+	HTTPAnswer := 0
+	switch answer {
+	case constants.AnswerSuccessfully:
+		HTTPAnswer = http.StatusOK
+
+	case constants.AnswerInvalidFormat:
+		HTTPAnswer = http.StatusBadRequest
+
+	case constants.AnswerLoginBusy:
+		HTTPAnswer = http.StatusConflict
+
+	case constants.AnswerErrorServer:
+		HTTPAnswer = http.StatusInternalServerError
+
+	case constants.AnswerInvalidLoginPassword:
+		HTTPAnswer = http.StatusUnauthorized
+
+	case constants.AnswerUserNotAuthenticated:
+		HTTPAnswer = http.StatusUnauthorized
+
+	case constants.AnswerAccepted:
+		HTTPAnswer = http.StatusAccepted
+
+	case constants.AnswerUploadedAnotherUser:
+		HTTPAnswer = http.StatusConflict
+
+	case constants.AnswerInvalidOrderNumber:
+		HTTPAnswer = http.StatusUnprocessableEntity
+
+	case constants.AnswerInsufficientFunds:
+		HTTPAnswer = http.StatusPaymentRequired
+
+	case constants.AnswerNoContent:
+		HTTPAnswer = http.StatusNoContent
+
+	case constants.AnswerConflict:
+		HTTPAnswer = http.StatusConflict
+
+	case constants.AnswerTooManyRequests:
+		HTTPAnswer = http.StatusTooManyRequests
+	default:
+		HTTPAnswer = 0
+	}
+
+	return HTTPAnswer
 }

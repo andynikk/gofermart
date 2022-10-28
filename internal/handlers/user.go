@@ -7,11 +7,10 @@ import (
 
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
-	"github.com/andynikk/gofermart/internal/web"
 )
 
 func (srv *Server) UserRegisterGET(rw http.ResponseWriter, rq *http.Request) {
-	content := web.RegisterPage(srv.Address)
+	content := srv.RegisterPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -41,7 +40,7 @@ func (srv *Server) UserRegisterGET(rw http.ResponseWriter, rq *http.Request) {
 
 func (srv *Server) UserLoginGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.LoginPage(srv.Address)
+	content := srv.LoginPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -71,7 +70,7 @@ func (srv *Server) UserLoginGET(rw http.ResponseWriter, rq *http.Request) {
 
 func (srv *Server) UserOrderGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.OrderPage(srv.Address)
+	content := srv.OrderPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -101,7 +100,7 @@ func (srv *Server) UserOrderGET(rw http.ResponseWriter, rq *http.Request) {
 
 func (srv *Server) UserOrdersGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.OrdersPage(srv.Address)
+	content := srv.OrdersPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -131,7 +130,7 @@ func (srv *Server) UserOrdersGET(rw http.ResponseWriter, rq *http.Request) {
 
 func (srv *Server) UserBalanceGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.BalancePage(srv.Address)
+	content := srv.BalancePage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -161,7 +160,7 @@ func (srv *Server) UserBalanceGET(rw http.ResponseWriter, rq *http.Request) {
 
 func (srv *Server) UserBalanceWithdrawGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.BalanceWithdrawPage(srv.Address)
+	content := srv.BalanceWithdrawPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -191,7 +190,7 @@ func (srv *Server) UserBalanceWithdrawGET(rw http.ResponseWriter, rq *http.Reque
 
 func (srv *Server) UserBalanceWithdrawsGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.BalanceWithdrawsPage(srv.Address)
+	content := srv.BalanceWithdrawsPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 
@@ -221,7 +220,7 @@ func (srv *Server) UserBalanceWithdrawsGET(rw http.ResponseWriter, rq *http.Requ
 
 func (srv *Server) UserAccrualGET(rw http.ResponseWriter, rq *http.Request) {
 
-	content := web.AccrualPage(srv.Address)
+	content := srv.AccrualPage()
 
 	acceptEncoding := rq.Header.Get("Accept-Encoding")
 

@@ -9,11 +9,6 @@ import (
 	"github.com/andynikk/gofermart/internal/environment"
 )
 
-type DBConnector struct {
-	Pool *pgxpool.Pool
-	Cfg  *environment.DBConfig
-}
-
 func (dbc *DBConnector) PoolDB() error {
 	dbCfg := new(environment.DBConfig)
 	dbCfg.SetConfigDB()
