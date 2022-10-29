@@ -223,6 +223,11 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("++++++++++++++++++4-")
+	fmt.Println(respByte)
+	fmt.Println(orderWithdraw)
+	fmt.Println("++++++++++++++++++4-")
+
 	tokenHeader := ""
 	if r.Header["Authorization"] != nil {
 		tokenHeader = r.Header["Authorization"][0]
@@ -234,6 +239,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	// 4.1.3 TODO: Добавляем запись с количеством списанных баллов
 	answer, err := srv.DBConnector.TryWithdraw(tokenHeader, orderWithdraw.Order, orderWithdraw.Withdraw)
 	if err != nil {
+		fmt.Println("++++++++++++++++++4-", err)
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка списания средств", http.StatusInternalServerError)
 		return
