@@ -54,9 +54,10 @@ type totalBalanceDB struct {
 }
 
 type withdrawDB struct {
-	Order       int       `json:"order"`
+	Order       string    `json:"order"`
 	Withdraw    float64   `json:"sum"`
 	DateAccrual time.Time `json:"processed_at" format:"RFC333"`
+	Current     float64   `json:"current,omitempty"`
 }
 
 type FullScoringSystem struct {

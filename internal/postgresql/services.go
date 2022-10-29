@@ -247,7 +247,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	if !rows.Next() {
 		fmt.Println("--------------4.4-ордер не существует. создаем")
 		rows.Close()
-		_, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
+		rows, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
 		if err != nil {
 			return nil, err
 		}
@@ -410,7 +410,7 @@ func (dbc *DBConnector) UserWithdrawal(tkn string) (*AnswerBD, error) {
 	for rows.Next() {
 		var bdb withdrawDB
 
-		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw)
+		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw, &bdb.Current)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
@@ -563,7 +563,7 @@ func (dbc *DBConnector) UserAccrual(tkn string) (*AnswerBD, error) {
 	for rows.Next() {
 		var bdb withdrawDB
 
-		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw)
+		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw, &bdb.Current)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
