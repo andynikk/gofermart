@@ -23,6 +23,7 @@ import (
 
 func (dbc *DBConnector) NewAccount(name string, password string) (*Account, error) {
 	account := new(Account)
+	account.User = new(User)
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -37,8 +38,11 @@ func (dbc *DBConnector) NewAccount(name string, password string) (*Account, erro
 	}
 	defer rows.Close()
 
-	if rows.Next() {
-		_ = rows.Scan(&account.Name, &account.Password)
+	for rows.Next() {
+		err := rows.Scan(&account.Name, &account.Password)
+		if err != nil {
+			return nil, err
+		}
 		account.ResponseStatus = constants.AnswerLoginBusy
 		return account, nil
 	}
@@ -58,6 +62,7 @@ func (dbc *DBConnector) NewAccount(name string, password string) (*Account, erro
 
 func (dbc *DBConnector) GetAccount(name string, password string) (*Account, error) {
 	account := new(Account)
+	account.User = new(User)
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -88,6 +93,7 @@ func (dbc *DBConnector) GetAccount(name string, password string) (*Account, erro
 
 func (dbc *DBConnector) NewOrder(tkn string, number int) (*Order, error) {
 	order := new(Order)
+	order.OrderUser = new(OrderUser)
 
 	ctx := context.Background()
 	claims, ok := token.ExtractClaims(tkn)
