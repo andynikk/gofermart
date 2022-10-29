@@ -197,7 +197,6 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 	}
 
 	bufJSONStr := bytes.NewBuffer(jsonStr)
-	//addressPost := fmt.Sprintf("http://%s/api/orders", srv.AddressAcSys)
 	addressPost := fmt.Sprintf("%s/api/orders", srv.AddressAcSys)
 	req, err := http.NewRequest("POST", addressPost, bufJSONStr)
 	if err != nil {

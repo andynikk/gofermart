@@ -14,8 +14,13 @@ type AnswerBD struct {
 	JSON   []byte
 }
 
+type Order struct {
+	*OrderUser
+	ResponseStatus constants.Answer
+}
+
 type Account struct {
-	User
+	*User
 	ResponseStatus constants.Answer
 }
 

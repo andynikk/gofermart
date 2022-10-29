@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -85,14 +86,14 @@ func (dbc *DBConnector) GetAccount(name string, password string) (*Account, erro
 	return account, nil
 }
 
-func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) NewOrder(tkn string, number int) (*Order, error) {
+	order := new(Order)
 
 	ctx := context.Background()
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		answerBD.Answer = constants.AnswerUserNotAuthenticated
-		return answerBD, nil
+		order.ResponseStatus = constants.AnswerUserNotAuthenticated
+		return order, nil
 	}
 
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -103,22 +104,21 @@ func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {
 
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
 	if err != nil {
-		answerBD.Answer = constants.AnswerInvalidFormat
-		return answerBD, nil
+		return nil, err
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		ou := new(OrderUser)
 
-		_ = rows.Scan(&ou.User, &ou.Number, &ou.CreatedAt, &ou.StartedAt, &ou.FinishedAt, &ou.FailedAt, &ou.Status)
-		if ou.User == claims["user"] {
-			answerBD.Answer = constants.AnswerSuccessfully
+		_ = rows.Scan(&order.User, &order.Number, &order.CreatedAt,
+			&order.StartedAt, &order.FinishedAt, &order.FailedAt, &order.Status)
+		if order.User == claims["user"] {
+			order.ResponseStatus = constants.AnswerSuccessfully
 		} else {
-			answerBD.Answer = constants.AnswerUploadedAnotherUser
+			order.ResponseStatus = constants.AnswerUploadedAnotherUser
 		}
 
-		return answerBD, nil
+		return order, nil
 	}
 
 	conn, err = dbc.Pool.Acquire(ctx)
@@ -127,22 +127,18 @@ func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {
 	}
 	defer conn.Release()
 
-	fmt.Println("++++++++++++++++++3.1.1-", claims["user"], number, time.Now())
 	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now()); err != nil {
 		constants.Logger.ErrorLog(err)
-		answerBD.Answer = constants.AnswerInvalidFormat
-		fmt.Println("++++++++++++++++++3.1.1-")
-		return answerBD, nil
+		return nil, err
 	}
-	fmt.Println("++++++++++++++++++3.1.1+")
 	/////////////////////////////////////////////////////////////////
 
-	answerBD.Answer = constants.AnswerAccepted
-	return answerBD, nil
+	order.ResponseStatus = constants.AnswerAccepted
+	return order, nil
 }
 
-func (dbc *DBConnector) SetStartedAt(number int) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) SetStartedAt(number int, tkn string) (*Order, error) {
+	order := new(Order)
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -151,16 +147,30 @@ func (dbc *DBConnector) SetStartedAt(number int) (*AnswerBD, error) {
 	}
 	defer conn.Release()
 
-	rows, err := conn.Query(ctx, constants.QueryUpdateStartedAt, time.Now(), number)
+	timeNow := time.Now()
+	rows, err := conn.Query(ctx, constants.QueryUpdateStartedAt, timeNow, number)
 	if err != nil {
 		conn.Release()
-		answerBD.Answer = constants.AnswerInvalidFormat
-		return answerBD, nil
+		return nil, err
 	}
 	defer rows.Close()
 
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
+	claims, ok := token.ExtractClaims(tkn)
+	if !ok {
+		order.Number = strconv.Itoa(number)
+		order.StartedAt = timeNow
+		order.ResponseStatus = constants.AnswerUserNotAuthenticated
+
+		return order, nil
+	}
+
+	nameUser := claims["user"].(string)
+	order.Number = strconv.Itoa(number)
+	order.User = nameUser
+	order.StartedAt = timeNow
+	order.ResponseStatus = constants.AnswerSuccessfully
+
+	return order, nil
 }
 
 func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*AnswerBD, error) {

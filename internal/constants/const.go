@@ -31,6 +31,7 @@ const (
 
 	PortServer      = "localhost:8080"
 	PortAcSysServer = "localhost:8000"
+	DemoMode        = false
 
 	QuerySelectUserWithWhereTemplate = `SELECT 
 						* 

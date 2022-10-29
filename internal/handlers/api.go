@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/random"
 	"io"
 	"net/http"
 	"strconv"
@@ -19,34 +20,33 @@ import (
 // POST
 // 1 TODO: Регистрация пользователя
 func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++1 (/api/user/register)")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
 	err := compression.DecompressBody(contentEncoding, body)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	respByte, err := io.ReadAll(body)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	User := new(postgresql.User)
 
 	if err := json.Unmarshal(respByte, &User); err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка получения JSON", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 1.2 TODO: Регистрация пользователя в БД.
 	// 1.2.1 TODO: Ищем пользовотеля в таблице БД. Если находим, то не создаем. Пароль кэшируется
 	account, err := srv.DBConnector.NewAccount(User.Name, User.Password)
 	if err != nil {
-		http.Error(w, "Ошибка регистрации пользователя", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	tokenString := ""
@@ -72,32 +72,31 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 // 2 TODO: Аутентификации пользователя
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++2 (/api/user/login)")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
 	err := compression.DecompressBody(contentEncoding, body)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	respByte, err := io.ReadAll(body)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	User := new(postgresql.User)
 	if err := json.Unmarshal(respByte, &User); err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 2.1 TODO: Аутентификации пользователя в БД
 	account, err := srv.DBConnector.GetAccount(User.Name, User.Password)
 	if err != nil {
-		http.Error(w, "Ошибка регистрации пользователя", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -112,7 +111,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	tc := token.Claims{Authorized: true, User: User.Name, Exp: constants.TimeLiveToken}
 	if tokenString, err = tc.GenerateJWT(); err != nil {
 		w.Header().Add("Authorization", "")
-		http.Error(w, "Ошибка получения токена", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -123,32 +122,31 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 // 3 TODO: Добавление нового ордера
 func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++3 (/api/user/orders (POST))")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
 	err := compression.DecompressBody(contentEncoding, body)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	respByte, err := io.ReadAll(body)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Error get value", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	numOrder, err := strconv.Atoi(string(respByte))
 	if err != nil || numOrder == 0 {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "not Luna", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	//TODO: Проверка на Луна
 	if !luhn.Valid(numOrder) {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "not Luna", http.StatusUnprocessableEntity)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
@@ -159,44 +157,44 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 3.1 TODO: Добавление нового ордера в БД.
 	// 3.1.1 TODO: Ищем ордер по номеру. Если не находим, то создаем
-	fmt.Println("++++++++++++++++++3.1-")
-	fmt.Println("++++++++++++++++++3.1", numOrder)
-	answer, err := srv.DBConnector.NewOrder(tokenHeader, numOrder)
+	order, err := srv.DBConnector.NewOrder(tokenHeader, numOrder)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка добавления ордера", http.StatusInternalServerError)
 	}
-	fmt.Println("++++++++++++++++++3.1+")
-	w.WriteHeader(HTTPAnswer(answer.Answer))
-	if answer.Answer != constants.AnswerAccepted {
+	w.WriteHeader(HTTPAnswer(order.ResponseStatus))
+	if order.ResponseStatus != constants.AnswerAccepted {
 		return
 	}
 
-	//min := 1000.00
-	//max := 3000.00
-	//goodOrderSS := new(GoodOrderSS)
-	//goodOrderSS.Description = random.RandNameItem(2, 3)
-	//goodOrderSS.Price = random.RandPriceItem(min, max)
-	//
-	//var arrGoodOrderSS []GoodOrderSS
-	//arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
-	//
-	//orderSS := OrderSS{
-	//	string(respByte),
-	//	arrGoodOrderSS,
-	//}
-	//err = srv.AddOrderScoringSystem(&orderSS)
-	//if err != nil {
-	//	constants.Logger.ErrorLog(err)
-	//	return
-	//}
-	//
-	//answer, err = srv.DBConnector.SetStartedAt(numOrder)
-	//if err != nil {
-	//	constants.Logger.ErrorLog(err)
-	//	return
-	//}
-	//w.WriteHeader(HTTPAnswer(answer.Answer))
+	if srv.DemoMode {
+		min := 1000.00
+		max := 3000.00
+
+		goodOrderSS := new(GoodOrderSS)
+		goodOrderSS.Description = random.RandNameItem(2, 3)
+		goodOrderSS.Price = random.RandPriceItem(min, max)
+
+		var arrGoodOrderSS []GoodOrderSS
+		arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
+
+		orderSS := OrderSS{
+			string(respByte),
+			arrGoodOrderSS,
+		}
+		err = srv.AddOrderScoringSystem(&orderSS)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			return
+		}
+
+		order, err = srv.DBConnector.SetStartedAt(numOrder, tokenHeader)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			return
+		}
+		w.WriteHeader(HTTPAnswer(order.ResponseStatus))
+	}
 }
 
 // 4 TODO: Списание баллов лояльности
