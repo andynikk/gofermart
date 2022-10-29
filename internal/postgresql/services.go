@@ -303,7 +303,8 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		return answerBD, nil
 	}
 
-	rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
+	//rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
+	rows, err := conn.Query(ctx, constants.QueryUserOrdes, claims["user"])
 	if err != nil {
 		return nil, err
 	}
@@ -321,10 +322,8 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		}
 		ss, err := GetOrder4AS(addressAcSys, bdb.Number)
 		if err == nil {
-			fmt.Println("++++++++++++++++++8-", bdb)
+			fmt.Println("++++++++++++++++++8-SS", ss.Accrual)
 			bdb.Current = ss.Accrual
-		} else {
-			fmt.Println("++++++++++++++++++8-err AS", err)
 		}
 		arrBalance = append(arrBalance, bdb)
 		fmt.Println("++++++++++++++++++8-", bdb)
