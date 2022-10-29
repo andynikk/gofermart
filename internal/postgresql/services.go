@@ -220,7 +220,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	}
 	defer conn.Release()
 	//TODO: Добавляем спсанные баллы
-	if _, err = conn.Query(ctx, constants.QueryAddAccrual, number, sumWithdraw, time.Now(), "MINUS"); err != nil {
+	if _, err = conn.Query(ctx, constants.QueryAddAccrual, sumWithdraw, time.Now(), "MINUS", number); err != nil {
 		fmt.Println("--------------3", err)
 		fmt.Println("--------------3", err.Error())
 		return nil, err

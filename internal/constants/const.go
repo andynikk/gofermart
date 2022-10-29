@@ -163,7 +163,7 @@ const (
 								gofermart.orders ("userID", "orderID", "createdAt") 
 							VALUES
 								($1, $2, $3);`
-	QueryAddAccrual = `INSERT INTO gofermart.order_accrual("Order", "Accrual", "DateAccrual", "TypeAccrual")
+	QueryAddAccrual = `INSERT INTO gofermart.order_accrual("Accrual", "DateAccrual", "TypeAccrual", "Order")
 							VALUES ($1, $2, $3, $4);`
 	QuerySelectAccrual = `SELECT	
 								gofermart.orders."orderID"
