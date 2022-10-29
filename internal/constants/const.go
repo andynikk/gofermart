@@ -134,18 +134,19 @@ const (
 								GROUP BY
 									orders."orderID"`
 	QueryUserOrdes = `SELECT
-							oa."Order"
+							o."orderID"
 							, 0.00 AS total
 							, SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN oa."Accrual" ELSE 0 END) AS withdrawn
 							, SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN 0 ELSE oa."Accrual" END) AS "current"
 						FROM
-							gofermart.order_accrual AS oa
-						LEFT JOIN gofermart.orders AS o
-							ON oa."Order" = o."orderID"
+							gofermart.orders AS o
+						LEFT JOIN gofermart.order_accrual AS oa
+							ON o."orderID" = oa."Order"
 						WHERE
 							o."userID" = $1
 						GROUP BY
-							oa."Order"`
+							o."orderID"
+							`
 
 	QueryOrderBalansTemplate = `SELECT
 									'' as orderID
