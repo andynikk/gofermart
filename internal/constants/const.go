@@ -182,8 +182,7 @@ const (
 	QuerySelectAccrual = `SELECT	
 								gofermart.orders."orderID"
 								, coalesce(OrderAccrua."DateAccrual", '-infinity'::timestamp) as DateAccrual
-								, coalesce(OrderAccrua.withdrawn, 0) AS withdrawn
-								, coalesce(OrderAccrua."current", 0) as "current"
+								, coalesce(OrderAccrua.withdrawn, 0) AS withdrawn	
 							FROM
 								gofermart.orders
 							
