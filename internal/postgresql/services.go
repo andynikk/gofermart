@@ -318,21 +318,22 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
-			fmt.Println("++++++++++++++++++8-err", err)
+			fmt.Println("++++++++++++++++++8.3-err", err)
 			constants.Logger.ErrorLog(err)
 			continue
 		}
+		fmt.Println("++++++++++++++++++8.3-строка", bdb)
 		ss, err := GetOrder4AS(addressAcSys, bdb.Number)
 		if err == nil {
-			fmt.Println("++++++++++++++++++8-SS", ss.Accrual)
+			fmt.Println("++++++++++++++++++8.3-SS", ss.Accrual)
 			bdb.Current = ss.Accrual
 		}
 		arrBalance = append(arrBalance, bdb)
-		fmt.Println("++++++++++++++++++8-", bdb)
 	}
+	fmt.Println("++++++++++++++++++8.3+")
 	fmt.Println("++++++++++++++++++8.4-")
 	if len(arrBalance) == 0 {
-		fmt.Println("++++++++++++++++++8- пусто")
+		fmt.Println("++++++++++++++++++8-пусто")
 		answerBD.Answer = constants.AnswerNoContent
 		return answerBD, nil
 	}
