@@ -38,7 +38,7 @@ func (dbc *DBConnector) NewAccount(name string, password string) (*Account, erro
 	}
 	defer rows.Close()
 
-	for rows.Next() {
+	if rows.Next() {
 		err := rows.Scan(&account.Name, &account.Password)
 		if err != nil {
 			return nil, err

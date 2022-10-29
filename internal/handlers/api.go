@@ -164,6 +164,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(HTTPAnswer(order.ResponseStatus))
 	if order.ResponseStatus != constants.AnswerAccepted {
+		w.WriteHeader(HTTPAnswer(order.ResponseStatus))
 		return
 	}
 
