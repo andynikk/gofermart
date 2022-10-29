@@ -220,7 +220,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	}
 	defer conn.Release()
 	//TODO: Добавляем спсанные баллы
-	fmt.Println("--------------3-", err)
+	fmt.Println("--------------3-")
 	fmt.Println("--------------3-", sumWithdraw, time.Now(), "MINUS", number)
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual, sumWithdraw, time.Now(), "MINUS", number); err != nil {
 		fmt.Println("--------------3", err)
@@ -692,8 +692,8 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 
 	_, err = conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS gofermart.order_accrual
 								(
-									"Accrual" numeric,
-									"DateAccrual" double precision,
+									"Accrual" double precision,
+									"DateAccrual" timestamp with time zone,
 									"TypeAccrual" character varying(10) COLLATE pg_catalog."default",
 									"Order" numeric
 								)
