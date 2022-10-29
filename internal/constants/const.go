@@ -135,7 +135,7 @@ const (
 									orders."orderID"`
 
 	QueryOrderBalansTemplate = `SELECT
-									'' as Order
+									'' as orderID
 									, sum(coalesce(OrderAccrua.total, 0)) AS total
 									, sum(coalesce(OrderAccrua.withdrawn, 0)) AS withdrawn
 									, sum(coalesce(OrderAccrua."current", 0)) as "current"
