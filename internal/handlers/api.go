@@ -13,7 +13,6 @@ import (
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
-	"github.com/andynikk/gofermart/internal/random"
 	"github.com/andynikk/gofermart/internal/token"
 )
 
@@ -173,31 +172,31 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	min := 1000.00
-	max := 3000.00
-	goodOrderSS := new(GoodOrderSS)
-	goodOrderSS.Description = random.RandNameItem(2, 3)
-	goodOrderSS.Price = random.RandPriceItem(min, max)
-
-	var arrGoodOrderSS []GoodOrderSS
-	arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
-
-	orderSS := OrderSS{
-		string(respByte),
-		arrGoodOrderSS,
-	}
-	err = srv.AddOrderScoringSystem(&orderSS)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return
-	}
-
-	answer, err = srv.DBConnector.SetStartedAt(numOrder)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return
-	}
-	w.WriteHeader(HTTPAnswer(answer.Answer))
+	//min := 1000.00
+	//max := 3000.00
+	//goodOrderSS := new(GoodOrderSS)
+	//goodOrderSS.Description = random.RandNameItem(2, 3)
+	//goodOrderSS.Price = random.RandPriceItem(min, max)
+	//
+	//var arrGoodOrderSS []GoodOrderSS
+	//arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
+	//
+	//orderSS := OrderSS{
+	//	string(respByte),
+	//	arrGoodOrderSS,
+	//}
+	//err = srv.AddOrderScoringSystem(&orderSS)
+	//if err != nil {
+	//	constants.Logger.ErrorLog(err)
+	//	return
+	//}
+	//
+	//answer, err = srv.DBConnector.SetStartedAt(numOrder)
+	//if err != nil {
+	//	constants.Logger.ErrorLog(err)
+	//	return
+	//}
+	//w.WriteHeader(HTTPAnswer(answer.Answer))
 }
 
 // 4 TODO: Списание баллов лояльности
