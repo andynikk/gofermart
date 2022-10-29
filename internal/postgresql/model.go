@@ -14,6 +14,11 @@ type AnswerBD struct {
 	JSON   []byte
 }
 
+type Account struct {
+	User
+	ResponseStatus constants.Answer
+}
+
 type User struct {
 	Name     string `json:"login"`
 	Password string `json:"password"`

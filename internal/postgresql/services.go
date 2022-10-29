@@ -20,9 +20,8 @@ import (
 	"github.com/andynikk/gofermart/internal/token"
 )
 
-func (dbc *DBConnector) NewAccount(name string, password string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
-	answerBD.Answer = constants.AnswerSuccessfully
+func (dbc *DBConnector) NewAccount(name string, password string) (*Account, error) {
+	account := new(Account)
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -33,30 +32,31 @@ func (dbc *DBConnector) NewAccount(name string, password string) (*AnswerBD, err
 
 	rows, err := conn.Query(ctx, constants.QuerySelectUserWithWhereTemplate, name)
 	if err != nil {
-		answerBD.Answer = constants.AnswerInvalidFormat
-		return answerBD, nil
+		return nil, err
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		answerBD.Answer = constants.AnswerLoginBusy
-		return answerBD, nil
+		_ = rows.Scan(&account.Name, &account.Password)
+		account.ResponseStatus = constants.AnswerLoginBusy
+		return account, nil
 	}
 
 	heshVal := cryptography.HeshSHA256(password, dbc.Cfg.Key)
-
 	if _, err := conn.Exec(ctx, constants.QueryAddUserTemplate, name, heshVal); err != nil {
-		answerBD.Answer = constants.AnswerInvalidFormat
-		return answerBD, nil
+		return nil, err
 	}
 	conn.Release()
 
-	return answerBD, err
+	account.Name = name
+	account.Password = heshVal
+	account.ResponseStatus = constants.AnswerSuccessfully
+
+	return account, nil
 }
 
-func (dbc *DBConnector) GetAccount(name string, password string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
-	answerBD.Answer = constants.AnswerInvalidLoginPassword
+func (dbc *DBConnector) GetAccount(name string, password string) (*Account, error) {
+	account := new(Account)
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -68,18 +68,21 @@ func (dbc *DBConnector) GetAccount(name string, password string) (*AnswerBD, err
 	heshVal := cryptography.HeshSHA256(password, dbc.Cfg.Key)
 	rows, err := conn.Query(ctx, constants.QuerySelectUserWithPasswordTemplate, name, heshVal)
 	if err != nil {
-		answerBD.Answer = constants.AnswerInvalidFormat
-		return answerBD, nil
+		return nil, err
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		answerBD.Answer = constants.AnswerSuccessfully
-		return answerBD, nil
+
+		_ = rows.Scan(&account.Name, &account.Password)
+		account.ResponseStatus = constants.AnswerSuccessfully
+		return account, nil
+
 	}
 	conn.Release()
 
-	return answerBD, nil
+	account.ResponseStatus = constants.AnswerInvalidLoginPassword
+	return account, nil
 }
 
 func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {

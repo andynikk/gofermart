@@ -44,15 +44,15 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 1.2 TODO: Регистрация пользователя в БД.
 	// 1.2.1 TODO: Ищем пользовотеля в таблице БД. Если находим, то не создаем. Пароль кэшируется
-	answer, err := srv.DBConnector.NewAccount(User.Name, User.Password)
+	account, err := srv.DBConnector.NewAccount(User.Name, User.Password)
 	if err != nil {
 		http.Error(w, "Ошибка регистрации пользователя", http.StatusInternalServerError)
 		return
 	}
 	tokenString := ""
-	if answer.Answer != constants.AnswerSuccessfully {
+	if account.ResponseStatus != constants.AnswerSuccessfully {
 		w.Header().Add("Authorization", tokenString)
-		w.WriteHeader(HTTPAnswer(answer.Answer))
+		w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 		return
 	}
 
@@ -67,7 +67,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 1.4 TODO: Добавление токена в Header
 	w.Header().Add("Authorization", tokenString)
-	w.WriteHeader(HTTPAnswer(answer.Answer))
+	w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 }
 
 // 2 TODO: Аутентификации пользователя
@@ -95,16 +95,16 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2.1 TODO: Аутентификации пользователя в БД
-	answer, err := srv.DBConnector.GetAccount(User.Name, User.Password)
+	account, err := srv.DBConnector.GetAccount(User.Name, User.Password)
 	if err != nil {
 		http.Error(w, "Ошибка регистрации пользователя", http.StatusInternalServerError)
 		return
 	}
 
 	tokenString := ""
-	if answer.Answer != constants.AnswerSuccessfully {
+	if account.ResponseStatus != constants.AnswerSuccessfully {
 		w.Header().Add("Authorization", tokenString)
-		w.WriteHeader(HTTPAnswer(answer.Answer))
+		w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 		return
 	}
 
@@ -118,7 +118,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 2.2 TODO: Добавление токена в Header
 	w.Header().Add("Authorization", tokenString)
-	w.WriteHeader(HTTPAnswer(answer.Answer))
+	w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 }
 
 // 3 TODO: Добавление нового ордера
