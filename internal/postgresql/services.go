@@ -258,6 +258,7 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, e
 			constants.Logger.ErrorLog(err)
 			continue
 		}
+		fmt.Println()
 		ss, err := GetOrder4AS(addressAcSys, ord.Number)
 		if err == nil {
 			ord.Status = ss.Status
@@ -721,7 +722,8 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 }
 
 func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
-	addressPost := fmt.Sprintf("http://%s/api/orders/%s", addressAcSys, number)
+	//addressPost := fmt.Sprintf("http://%s/api/orders/%s", addressAcSys, number)
+	addressPost := fmt.Sprintf("%s/api/orders/%s", addressAcSys, number)
 	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
 	if err != nil {
 		return nil, err

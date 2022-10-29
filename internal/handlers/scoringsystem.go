@@ -194,7 +194,6 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 	jsonStr, err := json.MarshalIndent(orderSS, "", " ")
 	if err != nil {
 		return err
-		return err
 	}
 
 	bufJSONStr := bytes.NewBuffer(jsonStr)
