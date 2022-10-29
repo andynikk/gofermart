@@ -166,43 +166,43 @@ func HTTPAnswer(answer constants.Answer) int {
 	HTTPAnswer := 0
 	switch answer {
 	case constants.AnswerSuccessfully:
-		HTTPAnswer = http.StatusOK
+		HTTPAnswer = http.StatusOK //200
 
 	case constants.AnswerInvalidFormat:
-		HTTPAnswer = http.StatusBadRequest
+		HTTPAnswer = http.StatusBadRequest //400
 
 	case constants.AnswerLoginBusy:
-		HTTPAnswer = http.StatusConflict
+		HTTPAnswer = http.StatusConflict //409
 
 	case constants.AnswerErrorServer:
-		HTTPAnswer = http.StatusInternalServerError
+		HTTPAnswer = http.StatusInternalServerError //500
 
 	case constants.AnswerInvalidLoginPassword:
-		HTTPAnswer = http.StatusUnauthorized
+		HTTPAnswer = http.StatusUnauthorized //401
 
 	case constants.AnswerUserNotAuthenticated:
-		HTTPAnswer = http.StatusUnauthorized
+		HTTPAnswer = http.StatusUnauthorized //401
 
 	case constants.AnswerAccepted:
-		HTTPAnswer = http.StatusAccepted
+		HTTPAnswer = http.StatusAccepted //202
 
 	case constants.AnswerUploadedAnotherUser:
-		HTTPAnswer = http.StatusConflict
+		HTTPAnswer = http.StatusConflict //409
 
 	case constants.AnswerInvalidOrderNumber:
-		HTTPAnswer = http.StatusUnprocessableEntity
+		HTTPAnswer = http.StatusUnprocessableEntity //422
 
 	case constants.AnswerInsufficientFunds:
-		HTTPAnswer = http.StatusPaymentRequired
+		HTTPAnswer = http.StatusPaymentRequired //402
 
 	case constants.AnswerNoContent:
-		HTTPAnswer = http.StatusNoContent
+		HTTPAnswer = http.StatusNoContent //204
 
 	case constants.AnswerConflict:
-		HTTPAnswer = http.StatusConflict
+		HTTPAnswer = http.StatusConflict //409
 
 	case constants.AnswerTooManyRequests:
-		HTTPAnswer = http.StatusTooManyRequests
+		HTTPAnswer = http.StatusTooManyRequests //429
 	default:
 		HTTPAnswer = 0
 	}

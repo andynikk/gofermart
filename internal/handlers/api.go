@@ -20,7 +20,7 @@ import (
 // POST
 // 1 TODO: Регистрация пользователя
 func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("++++++++++++++++++1")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
@@ -73,7 +73,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 // 2 TODO: Аутентификации пользователя
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("++++++++++++++++++2")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
@@ -124,6 +124,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 // 3 TODO: Добавление нового ордера
 func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("++++++++++++++++++3")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
@@ -199,6 +200,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 // 4 TODO: Списание баллов лояльности
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("++++++++++++++++++4")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
@@ -243,6 +245,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 // GET
 // 5 TODO: Получение списка ордеров по токену
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("++++++++++++++++++5")
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
@@ -264,7 +267,7 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 
 // 6 TODO: Для тестирования сделал API для продвижения ордера на следующий (рандомный) этап (/api/user/orders-next-status)
 func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("++++++++++++++++++7")
 	// 6.1 TODO: Двигаем ордер на следующий этап
 	// 6.1.1 TODO: Получаем спсок ордеров по пользователю из токена
 	// 6.1.2 TODO: Назначаем следующий этап. Если это статус PROCESSING, тогда выбираем рандомно INVALID или PROCESSED
@@ -285,6 +288,7 @@ func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
 
 // 7 TODO: получаем баланс пользователя
 func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("++++++++++++++++++8")
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
@@ -306,6 +310,7 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 
 // 8 TODO: Получение информации о выводе средств
 func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("++++++++++++++++++9")
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
@@ -326,7 +331,7 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 
 // 9 TODO: Взаимодействие с системой расчёта начислений баллов лояльности
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("++++++++++++++++++10")
 	number := mux.Vars(r)["number"]
 
 	data := make(chan *postgresql.FullScoringSystem)
