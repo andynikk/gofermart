@@ -180,6 +180,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		return nil, err
 	}
 	if !rows.Next() {
+		fmt.Println("-------------------", 1)
 		answerBD.Answer = constants.AnswerInvalidOrderNumber
 		return answerBD, nil
 	}
@@ -193,6 +194,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 
 	rows, err = conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
 	if err != nil {
+		fmt.Println("-------------------", 2)
 		constants.Logger.ErrorLog(err)
 		answerBD.Answer = constants.AnswerInvalidOrderNumber
 		return answerBD, nil
