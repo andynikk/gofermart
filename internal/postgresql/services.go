@@ -230,6 +230,28 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		return nil, err
 	}
 	fmt.Println("--------------4.3-окончание добавления списания")
+	rows.Close()
+
+	fmt.Println("--------------4.4-проверка на существование ордера")
+	conn.Release()
+	conn, err = dbc.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+
+	rows, err = conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], number)
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		fmt.Println("--------------4.4-ордер не существует. создаем")
+		rows.Close()
+		rows, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	answerBD.Answer = constants.AnswerSuccessfully
 	return answerBD, nil
