@@ -136,8 +136,8 @@ const (
 	QueryUserOrdes = `SELECT
 							o."orderID"
 							, 0.00 AS total
-							, SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN oa."Accrual" ELSE 0 END) AS withdrawn
-							, SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN 0 ELSE oa."Accrual" END) AS "current"
+							, SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN coalesce(oa."Accrual", 0) ELSE 0 END) AS withdrawn
+							, SUM(CASE WHEN oa."TypeAccrual" = 'MINUS' THEN 0 ELSE coalesce(oa."Accrual", 0) END) AS "current"
 						FROM
 							gofermart.orders AS o
 						LEFT JOIN gofermart.order_accrual AS oa
