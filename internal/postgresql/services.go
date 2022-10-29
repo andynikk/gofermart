@@ -366,6 +366,8 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		tbdb.Withdrawn = tbdb.Withdrawn + val.Withdrawn
 		tbdb.Current = tbdb.Current + val.Current
 	}
+	tbdb.Current = tbdb.Current - tbdb.Withdrawn
+
 	fmt.Println("++++++++++++++++++8.5-")
 	if err != nil {
 		return nil, err
