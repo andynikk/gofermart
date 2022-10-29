@@ -146,19 +146,19 @@ func (srv *Server) InitCFG() {
 
 // 4 TODO: инициализация системы лояльности
 func (srv *Server) InitScoringSystem() {
-	good := Goods{
-		"My table",
-		15,
-		"%",
-	}
-	srv.AddItemsScoringSystem(&good)
-
-	good = Goods{
-		"You table",
-		10,
-		"%",
-	}
-	srv.AddItemsScoringSystem(&good)
+	//good := Goods{
+	//	"My table",
+	//	15,
+	//	"%",
+	//}
+	//srv.AddItemsScoringSystem(&good)
+	//
+	//good = Goods{
+	//	"You table",
+	//	10,
+	//	"%",
+	//}
+	//srv.AddItemsScoringSystem(&good)
 }
 
 func HTTPAnswer(answer constants.Answer) int {
