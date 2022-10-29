@@ -160,12 +160,14 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 3.1 TODO: Добавление нового ордера в БД.
 	// 3.1.1 TODO: Ищем ордер по номеру. Если не находим, то создаем
+	fmt.Println("++++++++++++++++++3.1-")
+	fmt.Println("++++++++++++++++++3.1", numOrder)
 	answer, err := srv.DBConnector.NewOrder(tokenHeader, numOrder)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка добавления ордера", http.StatusInternalServerError)
 	}
-
+	fmt.Println("++++++++++++++++++3.1+")
 	w.WriteHeader(HTTPAnswer(answer.Answer))
 	if answer.Answer != constants.AnswerAccepted {
 		return

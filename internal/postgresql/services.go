@@ -124,12 +124,14 @@ func (dbc *DBConnector) NewOrder(tkn string, number int) (*AnswerBD, error) {
 	}
 	defer conn.Release()
 
+	fmt.Println("++++++++++++++++++3.1.1-", claims["user"], number, time.Now())
 	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now()); err != nil {
 		constants.Logger.ErrorLog(err)
 		answerBD.Answer = constants.AnswerInvalidFormat
+		fmt.Println("++++++++++++++++++3.1.1-")
 		return answerBD, nil
 	}
-
+	fmt.Println("++++++++++++++++++3.1.1+")
 	/////////////////////////////////////////////////////////////////
 
 	answerBD.Answer = constants.AnswerAccepted
@@ -431,7 +433,7 @@ func (dbc *DBConnector) UserOrders(name string) (*AnswerBD, error) {
 
 func (dbc *DBConnector) SetNextStatus() (*AnswerBD, error) {
 	var arrOrders []orderDB
-
+	fmt.Println("************************1")
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
@@ -623,6 +625,7 @@ func (dbc *DBConnector) VerificationOrderExists(number int) (*AnswerBD, error) {
 
 func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSystem) (*AnswerBD, error) {
 
+	fmt.Println("************************2")
 	answer := new(AnswerBD)
 
 	ctx := context.Background()
