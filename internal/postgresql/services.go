@@ -289,14 +289,14 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, e
 
 func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD, error) {
 	answerBD := new(AnswerBD)
-
+	fmt.Println("++++++++++++++++++8.1-")
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
-
+	fmt.Println("++++++++++++++++++8.2-")
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
 		answerBD.Answer = constants.AnswerUserNotAuthenticated
@@ -309,7 +309,7 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		return nil, err
 	}
 	defer rows.Close()
-
+	fmt.Println("++++++++++++++++++8.3-")
 	var arrBalance []BalanceDB
 	for rows.Next() {
 		var bdb BalanceDB
@@ -328,8 +328,9 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		arrBalance = append(arrBalance, bdb)
 		fmt.Println("++++++++++++++++++8-", bdb)
 	}
-
+	fmt.Println("++++++++++++++++++8.4-")
 	if len(arrBalance) == 0 {
+		fmt.Println("++++++++++++++++++8- пусто")
 		answerBD.Answer = constants.AnswerNoContent
 		return answerBD, nil
 	}
@@ -339,7 +340,7 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		tbdb.Withdrawn = tbdb.Withdrawn + val.Withdrawn
 		tbdb.Current = tbdb.Current + val.Current
 	}
-
+	fmt.Println("++++++++++++++++++8.5-")
 	if err != nil {
 		return nil, err
 	}
@@ -350,8 +351,8 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 	}
 	answerBD.JSON = listBalansJSON
 	answerBD.Answer = constants.AnswerSuccessfully
+	fmt.Println("++++++++++++++++++8.6-")
 	return answerBD, nil
-
 }
 
 func (dbc *DBConnector) UserWithdrawal(tkn string) (*AnswerBD, error) {
