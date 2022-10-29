@@ -199,9 +199,9 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	}
 
 	for rows.Next() {
-		var bdb BalansDB
+		var bdb BalanceDB
 
-		err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
+		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +281,7 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, e
 	return answerBD, nil
 }
 
-func (dbc *DBConnector) BalansOrders(tkn string) (*AnswerBD, error) {
+func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD, error) {
 	answerBD := new(AnswerBD)
 
 	ctx := context.Background()
@@ -303,19 +303,39 @@ func (dbc *DBConnector) BalansOrders(tkn string) (*AnswerBD, error) {
 	}
 	defer rows.Close()
 
-	if !rows.Next() {
+	var arrBalance []BalanceDB
+	for rows.Next() {
+		var bdb BalanceDB
 
+		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			continue
+		}
+		fmt.Println()
+		ss, err := GetOrder4AS(addressAcSys, bdb.Number)
+		if err == nil {
+			bdb.Current = ss.Accrual
+		}
+		arrBalance = append(arrBalance, bdb)
+	}
+
+	if len(arrBalance) == 0 {
 		answerBD.Answer = constants.AnswerNoContent
 		return answerBD, nil
 	}
 
-	var bdb BalansDB
-	err = rows.Scan(&bdb.Total, &bdb.Withdrawn, &bdb.Current)
+	var tbdb totalBalanceDB
+	for _, val := range arrBalance {
+		tbdb.Withdrawn = tbdb.Withdrawn + val.Withdrawn
+		tbdb.Current = tbdb.Current + val.Current
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	listBalansJSON, err := json.MarshalIndent(bdb, "", " ")
+	listBalansJSON, err := json.MarshalIndent(tbdb, "", " ")
 	if err != nil {
 		return nil, err
 	}

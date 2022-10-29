@@ -41,10 +41,16 @@ type orderDB struct {
 	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
 }
 
-type BalansDB struct {
+type BalanceDB struct {
+	Number    string  `json:"number"`
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 	Total     float64 `json:"total"`
+}
+
+type totalBalanceDB struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
 }
 
 type withdrawDB struct {

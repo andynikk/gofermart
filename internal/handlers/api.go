@@ -295,7 +295,7 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	// 7.1 TODO: Получаем баланс пользователя
 	// 7.1 TODO: По токену получаем пользователя
 	// 7.2 TODO: По пользовотелю получаем общий баланс начисленных и списанных баллов
-	answer, err := srv.DBConnector.BalansOrders(tokenHeader)
+	answer, err := srv.DBConnector.BalansOrders(tokenHeader, srv.AddressAcSys)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)

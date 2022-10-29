@@ -2,7 +2,6 @@ package environment
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
@@ -45,6 +44,5 @@ func (sc *ServerConfig) SetConfigServer() {
 
 	sc.Address = adresServer
 	sc.AddressAcSys = addressAcSysServer
-	fmt.Println("---------------", sc.AddressAcSys)
 
 }

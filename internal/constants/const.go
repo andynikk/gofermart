@@ -110,7 +110,8 @@ const (
 								ORDER BY orders."createdAt";`
 
 	QueryUserBalansTemplate = `SELECT
-									sum(coalesce(OrderAccrua.total, 0)) AS total
+									orders."orderID" as orderID 
+									, sum(coalesce(OrderAccrua.total, 0)) AS total
 									, sum(coalesce(OrderAccrua.withdrawn, 0)) AS withdrawn
 									, sum(coalesce(OrderAccrua."current", 0)) as "current"
 								FROM
@@ -128,10 +129,14 @@ const (
 										ON orders."orderID" = OrderAccrua."Order"
 									
 								WHERE 
-									gofermart.orders."userID" = $1`
+									gofermart.orders."userID" = $1
+
+								GROUP BY
+									orders."orderID"`
 
 	QueryOrderBalansTemplate = `SELECT
-									sum(coalesce(OrderAccrua.total, 0)) AS total
+									'' as Order
+									, sum(coalesce(OrderAccrua.total, 0)) AS total
 									, sum(coalesce(OrderAccrua.withdrawn, 0)) AS withdrawn
 									, sum(coalesce(OrderAccrua."current", 0)) as "current"
 								FROM
@@ -149,7 +154,10 @@ const (
 										ON orders."orderID" = OrderAccrua."Order"
 								WHERE	
 									gofermart.orders."userID" = $1 
-									and gofermart.orders."orderID" = $2;`
+									and gofermart.orders."orderID" = $2
+
+								GROUP BY
+									orderID;`
 
 	QueryAddOrderTemplate = `INSERT INTO 
 								gofermart.orders ("userID", "orderID", "createdAt") 
