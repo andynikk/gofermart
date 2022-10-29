@@ -224,7 +224,6 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("++++++++++++++++++4-")
-	fmt.Println(respByte)
 	fmt.Println(orderWithdraw)
 	fmt.Println("++++++++++++++++++4-")
 

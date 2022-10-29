@@ -315,15 +315,19 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
+			fmt.Println("++++++++++++++++++8-err", err)
 			constants.Logger.ErrorLog(err)
 			continue
 		}
-		fmt.Println()
 		ss, err := GetOrder4AS(addressAcSys, bdb.Number)
 		if err == nil {
+			fmt.Println("++++++++++++++++++8-", bdb)
 			bdb.Current = ss.Accrual
+		} else {
+			fmt.Println("++++++++++++++++++8-err AS", err)
 		}
 		arrBalance = append(arrBalance, bdb)
+		fmt.Println("++++++++++++++++++8-", bdb)
 	}
 
 	if len(arrBalance) == 0 {
