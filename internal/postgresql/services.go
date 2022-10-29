@@ -722,7 +722,6 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 }
 
 func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
-	//addressPost := fmt.Sprintf("http://%s/api/orders/%s", addressAcSys, number)
 	addressPost := fmt.Sprintf("%s/api/orders/%s", addressAcSys, number)
 	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
 	if err != nil {
