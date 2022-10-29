@@ -174,17 +174,16 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		return answerBD, nil
 	}
 
-	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], number)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return nil, err
-	}
-	if !rows.Next() {
-		fmt.Println("-------------------", 1)
-		answerBD.Answer = constants.AnswerInvalidOrderNumber
-		return answerBD, nil
-	}
-	conn.Release()
+	//rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], number)
+	//if err != nil {
+	//	constants.Logger.ErrorLog(err)
+	//	return nil, err
+	//}
+	//if !rows.Next() {
+	//	answerBD.Answer = constants.AnswerInvalidOrderNumber
+	//	return answerBD, nil
+	//}
+	//conn.Release()
 
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
@@ -192,12 +191,9 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	}
 	defer conn.Release()
 
-	rows, err = conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
+	rows, err := conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
 	if err != nil {
-		fmt.Println("-------------------", 2)
-		constants.Logger.ErrorLog(err)
-		answerBD.Answer = constants.AnswerInvalidOrderNumber
-		return answerBD, nil
+		return nil, err
 	}
 
 	for rows.Next() {
