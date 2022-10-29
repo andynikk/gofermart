@@ -247,7 +247,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	if !rows.Next() {
 		fmt.Println("--------------4.4-ордер не существует. создаем")
 		rows.Close()
-		rows, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
+		_, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
 		if err != nil {
 			return nil, err
 		}
