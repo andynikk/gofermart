@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/gorilla/mux"
+	"io"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -221,7 +226,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	return answerBD, nil
 }
 
-func (dbc *DBConnector) ListOrder(tkn string) (*AnswerBD, error) {
+func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, error) {
 	answerBD := new(AnswerBD)
 
 	ctx := context.Background()
@@ -252,6 +257,11 @@ func (dbc *DBConnector) ListOrder(tkn string) (*AnswerBD, error) {
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
+		}
+		ss, err := GetOrder4AS(addressAcSys, ord.Number)
+		if err == nil {
+			ord.Status = ss.Status
+			ord.Accrual = ss.Accrual
 		}
 		arrOrders = append(arrOrders, ord)
 	}
@@ -708,4 +718,56 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 		conn.Release()
 		return
 	}
+}
+
+func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
+	addressPost := fmt.Sprintf("http://%s/api/orders/%s", addressAcSys, number)
+	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	defer req.Body.Close()
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 429 {
+		return nil, errors.New("429")
+	}
+
+	varsAnswer := mux.Vars(req)
+	fmt.Println(varsAnswer)
+
+	body := resp.Body
+	contentEncoding := resp.Header.Get("Content-Encoding")
+	err = compression.DecompressBody(contentEncoding, body)
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.Contains(contentEncoding, "gzip") {
+		bytBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		arrBody, err := compression.Decompress(bytBody)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println(arrBody)
+	}
+
+	scoringSystem := new(ScoringSystem)
+	if err = json.NewDecoder(body).Decode(scoringSystem); err != nil {
+		return nil, err
+	}
+	return scoringSystem, nil
 }

@@ -252,7 +252,7 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	// 5.1 TODO: Получение списка ордеров по токену в БД
 	// 5.1.1 TODO: Из токена получаем имя пользователя
 	// 5.1.2 TODO: По имени пользователя получаем ордера
-	answer, err := srv.DBConnector.ListOrder(tokenHeader)
+	answer, err := srv.DBConnector.ListOrder(tokenHeader, srv.AddressAcSys)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
