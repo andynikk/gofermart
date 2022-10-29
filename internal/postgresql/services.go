@@ -193,6 +193,8 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 
 	rows, err := conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
 	if err != nil {
+		fmt.Println("--------------1", err)
+		fmt.Println("--------------1", err.Error())
 		return nil, err
 	}
 
@@ -201,6 +203,8 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
+			fmt.Println("--------------2", err)
+			fmt.Println("--------------2", err.Error())
 			return nil, err
 		}
 		if bdb.Total < sumWithdraw {
@@ -217,6 +221,8 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	defer conn.Release()
 	//TODO: Добавляем спсанные баллы
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual, number, sumWithdraw, time.Now(), "MINUS"); err != nil {
+		fmt.Println("--------------3", err)
+		fmt.Println("--------------3", err.Error())
 		return nil, err
 	}
 
