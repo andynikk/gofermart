@@ -140,12 +140,14 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	numOrder, err := strconv.Atoi(string(respByte))
 	if err != nil || numOrder == 0 {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
 	}
 
 	//TODO: Проверка на Луна
 	if !luhn.Valid(numOrder) {
 		constants.Logger.ErrorLog(err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
