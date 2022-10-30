@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/random"
 	"io"
 	"net/http"
 	"strconv"
@@ -167,12 +166,8 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if srv.DemoMode {
-		min := 1000.00
-		max := 3000.00
 
 		goodOrderSS := NewGoodOrderSS()
-		goodOrderSS.Description = random.RandNameItem(2, 3)
-		goodOrderSS.Price = random.RandPriceItem(min, max)
 
 		var arrGoodOrderSS []GoodOrderSS
 		arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)

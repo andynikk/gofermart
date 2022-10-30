@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/random"
 	"io"
 	"net/http"
 	"strconv"
@@ -215,7 +216,7 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 
 func NewGoodOrderSS() *GoodOrderSS {
 	return &GoodOrderSS{
-		Description: "",
-		Price:       0.00,
+		Description: random.RandNameItem(2, 3),
+		Price:       random.RandPriceItem(1000.00, 3000.00),
 	}
 }
