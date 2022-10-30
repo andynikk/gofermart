@@ -20,9 +20,23 @@ type Order struct {
 	ResponseStatus constants.Answer
 }
 
+func NewOrder() *Order {
+	return &Order{
+		OrderUser:      new(OrderUser),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
 type Account struct {
 	*User
 	ResponseStatus constants.Answer
+}
+
+func NewAccount() *Account {
+	return &Account{
+		User:           new(User),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
 }
 
 type User struct {
@@ -50,6 +64,13 @@ type OrdersDB struct {
 	ResponseStatus constants.Answer
 }
 
+func NewOrdersDB() *OrdersDB {
+	return &OrdersDB{
+		OrderDB:        []OrderDB{},
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
 type OrderDB struct {
 	Number     string    `json:"number"`
 	Status     string    `json:"status"`
@@ -58,13 +79,27 @@ type OrderDB struct {
 }
 
 type Balance struct {
-	BalanceDB
+	*BalanceDB
 	ResponseStatus constants.Answer
 }
 
+func NewBalance() *Balance {
+	return &Balance{
+		BalanceDB:      new(BalanceDB),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
 type Balances struct {
-	TotalBalanceDB totalBalanceDB
+	TotalBalanceDB *totalBalanceDB
 	ResponseStatus constants.Answer
+}
+
+func NewBalances() *Balances {
+	return &Balances{
+		TotalBalanceDB: new(totalBalanceDB),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
 }
 
 type BalanceDB struct {
@@ -81,6 +116,13 @@ type totalBalanceDB struct {
 type Withdraws struct {
 	WithdrawDB     []withdrawDB
 	ResponseStatus constants.Answer
+}
+
+func NewWithdraws() *Withdraws {
+	return &Withdraws{
+		WithdrawDB:     []withdrawDB{},
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
 }
 
 type withdrawDB struct {

@@ -22,8 +22,7 @@ import (
 )
 
 func (dbc *DBConnector) NewAccount(name string, password string) (*Account, error) {
-	account := new(Account)
-	account.User = new(User)
+	account := NewAccount()
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -61,8 +60,7 @@ func (dbc *DBConnector) NewAccount(name string, password string) (*Account, erro
 }
 
 func (dbc *DBConnector) GetAccount(name string, password string) (*Account, error) {
-	account := new(Account)
-	account.User = new(User)
+	account := NewAccount()
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -92,8 +90,7 @@ func (dbc *DBConnector) GetAccount(name string, password string) (*Account, erro
 }
 
 func (dbc *DBConnector) NewOrder(tkn string, number int) (*Order, error) {
-	order := new(Order)
-	order.OrderUser = new(OrderUser)
+	order := NewOrder()
 
 	ctx := context.Background()
 	claims, ok := token.ExtractClaims(tkn)
@@ -144,8 +141,7 @@ func (dbc *DBConnector) NewOrder(tkn string, number int) (*Order, error) {
 }
 
 func (dbc *DBConnector) SetStartedAt(number int, tkn string) (*Order, error) {
-	order := new(Order)
-	order.OrderUser = new(OrderUser)
+	order := NewOrder()
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -181,8 +177,7 @@ func (dbc *DBConnector) AddAccrual() {
 }
 
 func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*Balance, error) {
-	balance := new(Balance)
-	balance.BalanceDB = BalanceDB{}
+	balance := NewBalance()
 
 	balance.Number = number
 	balance.Withdrawn = sumWithdraw
@@ -223,7 +218,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 			return balance, nil
 		}
 	}
-	balance.BalanceDB = bdb
+	balance.BalanceDB = &bdb
 	conn.Release()
 
 	conn, err = dbc.Pool.Acquire(ctx)
@@ -261,8 +256,7 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 }
 
 func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*OrdersDB, error) {
-	ordersDB := new(OrdersDB)
-	ordersDB.OrderDB = []OrderDB{}
+	ordersDB := NewOrdersDB()
 
 	ctx := context.Background()
 
@@ -310,8 +304,7 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*OrdersDB, e
 }
 
 func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balances, error) {
-	balances := new(Balances)
-	balances.TotalBalanceDB = totalBalanceDB{}
+	balances := NewBalances()
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -332,7 +325,7 @@ func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balanc
 	}
 	defer rows.Close()
 
-	balancesDB := []BalanceDB{}
+	var balancesDB []BalanceDB
 	for rows.Next() {
 		var bdb BalanceDB
 
@@ -367,8 +360,7 @@ func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balanc
 }
 
 func (dbc *DBConnector) UserWithdrawal(tkn string) (*Withdraws, error) {
-	withdraws := new(Withdraws)
-	withdraws.WithdrawDB = []withdrawDB{}
+	withdraws := NewWithdraws()
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
