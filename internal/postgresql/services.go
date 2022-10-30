@@ -311,7 +311,7 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*OrdersDB, e
 
 func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balances, error) {
 	balances := new(Balances)
-	balances.BalanceDB = []BalanceDB{}
+	balances.TotalBalanceDB = totalBalanceDB{}
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -332,6 +332,7 @@ func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balanc
 	}
 	defer rows.Close()
 
+	balancesDB := []BalanceDB{}
 	for rows.Next() {
 		var bdb BalanceDB
 
@@ -344,19 +345,18 @@ func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balanc
 		if err == nil {
 			bdb.Current = ss.Accrual
 		}
-		balances.BalanceDB = append(balances.BalanceDB, bdb)
+		balancesDB = append(balancesDB, bdb)
 	}
-	if len(balances.BalanceDB) == 0 {
+	if len(balancesDB) == 0 {
 		balances.ResponseStatus = constants.AnswerNoContent
 		return balances, nil
 	}
 
-	var tbdb totalBalanceDB
-	for _, val := range balances.BalanceDB {
-		tbdb.Withdrawn = tbdb.Withdrawn + val.Withdrawn
-		tbdb.Current = tbdb.Current + val.Current
+	for _, val := range balancesDB {
+		balances.TotalBalanceDB.Withdrawn = balances.TotalBalanceDB.Withdrawn + val.Withdrawn
+		balances.TotalBalanceDB.Current = balances.TotalBalanceDB.Current + val.Current
 	}
-	tbdb.Current = tbdb.Current - tbdb.Withdrawn
+	balances.TotalBalanceDB.Current = balances.TotalBalanceDB.Current - balances.TotalBalanceDB.Withdrawn
 
 	if err != nil {
 		return nil, err

@@ -63,7 +63,7 @@ type Balance struct {
 }
 
 type Balances struct {
-	BalanceDB      []BalanceDB
+	TotalBalanceDB totalBalanceDB
 	ResponseStatus constants.Answer
 }
 
@@ -169,7 +169,7 @@ func (o *User) FromJSON(byte []byte) error {
 }
 
 func (o *Balances) InJSON() ([]byte, error) {
-	strJSON, err := json.MarshalIndent(o.BalanceDB, "", " ")
+	strJSON, err := json.MarshalIndent(o.TotalBalanceDB, "", " ")
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func (o *Balances) InJSON() ([]byte, error) {
 }
 
 func (o *Balances) FromJSON(byte []byte) error {
-	if err := json.Unmarshal(byte, &o.BalanceDB); err != nil {
+	if err := json.Unmarshal(byte, &o.TotalBalanceDB); err != nil {
 		return err
 	}
 	return nil
