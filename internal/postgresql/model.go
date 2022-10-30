@@ -51,6 +51,11 @@ type orderDB struct {
 	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
 }
 
+type Balance struct {
+	BalanceDB
+	ResponseStatus constants.Answer
+}
+
 type BalanceDB struct {
 	Number    string  `json:"number"`
 	Current   float64 `json:"current"`

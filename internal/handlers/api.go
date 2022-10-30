@@ -232,20 +232,19 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	// 4.1.1 TODO: Получаем баланс начисленных, списанных баллов
 	// 4.1.2 TODO: Если начисленных баллов больше, чем списанных, то разрешаем спсание
 	// 4.1.3 TODO: Добавляем запись с количеством списанных баллов
-	answer, err := srv.DBConnector.TryWithdraw(tokenHeader, orderWithdraw.Order, orderWithdraw.Withdraw)
+	balance, err := srv.DBConnector.TryWithdraw(tokenHeader, orderWithdraw.Order, orderWithdraw.Withdraw)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка списания средств", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(HTTPAnswer(answer.Answer))
+	w.WriteHeader(HTTPAnswer(balance.ResponseStatus))
 
 }
 
 // GET
 // 5 TODO: Получение списка ордеров по токену
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++5 (/api/user/orders (GET))")
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""

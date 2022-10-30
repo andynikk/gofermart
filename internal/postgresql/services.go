@@ -180,8 +180,10 @@ func (dbc *DBConnector) AddAccrual() {
 
 }
 
-func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*Balance, error) {
+	balance := new(Balance)
+	balance.Number = number
+	balance.Withdrawn = sumWithdraw
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -192,8 +194,8 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		answerBD.Answer = constants.AnswerUserNotAuthenticated
-		return answerBD, nil
+		balance.ResponseStatus = constants.AnswerUserNotAuthenticated
+		return balance, nil
 	}
 
 	conn, err = dbc.Pool.Acquire(ctx)
@@ -207,18 +209,19 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		return nil, err
 	}
 
-	for rows.Next() {
-		var bdb BalanceDB
+	var bdb BalanceDB
+	if rows.Next() {
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
 			return nil, err
 		}
 		if bdb.Total < sumWithdraw {
-			answerBD.Answer = constants.AnswerInsufficientFunds
-			return answerBD, nil
+			balance.ResponseStatus = constants.AnswerInsufficientFunds
+			return balance, nil
 		}
 	}
+	balance.BalanceDB = bdb
 	conn.Release()
 
 	conn, err = dbc.Pool.Acquire(ctx)
@@ -251,8 +254,8 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		}
 	}
 
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
+	balance.ResponseStatus = constants.AnswerSuccessfully
+	return balance, nil
 }
 
 func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, error) {
