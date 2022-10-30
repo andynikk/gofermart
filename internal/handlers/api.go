@@ -160,12 +160,11 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	order, err := srv.DBConnector.NewOrder(tokenHeader, numOrder)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка добавления ордера", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	w.WriteHeader(HTTPAnswer(order.ResponseStatus))
 	if order.ResponseStatus != constants.AnswerAccepted {
 		w.WriteHeader(HTTPAnswer(order.ResponseStatus))
-		return
 	}
 
 	if srv.DemoMode {
@@ -200,7 +199,6 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 // 4 TODO: Списание баллов лояльности
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++4 (/api/user/balance/withdraw)")
 	body := r.Body
 	contentEncoding := r.Header.Get("Content-Encoding")
 
@@ -223,9 +221,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("++++++++++++++++++4-")
 	fmt.Println(orderWithdraw)
-	fmt.Println("++++++++++++++++++4-")
 
 	tokenHeader := ""
 	if r.Header["Authorization"] != nil {
@@ -238,7 +234,6 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	// 4.1.3 TODO: Добавляем запись с количеством списанных баллов
 	answer, err := srv.DBConnector.TryWithdraw(tokenHeader, orderWithdraw.Order, orderWithdraw.Withdraw)
 	if err != nil {
-		fmt.Println("++++++++++++++++++4-", err)
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка списания средств", http.StatusInternalServerError)
 		return
@@ -338,7 +333,6 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 
 // 9 TODO: Взаимодействие с системой расчёта начислений баллов лояльности
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++10 (/api/orders/{number})")
 	number := mux.Vars(r)["number"]
 
 	data := make(chan *postgresql.FullScoringSystem)

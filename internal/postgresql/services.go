@@ -145,6 +145,7 @@ func (dbc *DBConnector) NewOrder(tkn string, number int) (*Order, error) {
 
 func (dbc *DBConnector) SetStartedAt(number int, tkn string) (*Order, error) {
 	order := new(Order)
+	order.OrderUser = new(OrderUser)
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -154,12 +155,9 @@ func (dbc *DBConnector) SetStartedAt(number int, tkn string) (*Order, error) {
 	defer conn.Release()
 
 	timeNow := time.Now()
-	rows, err := conn.Query(ctx, constants.QueryUpdateStartedAt, timeNow, number)
-	if err != nil {
-		conn.Release()
+	if _, err = conn.Query(ctx, constants.QueryUpdateStartedAt, timeNow, number); err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
@@ -170,13 +168,16 @@ func (dbc *DBConnector) SetStartedAt(number int, tkn string) (*Order, error) {
 		return order, nil
 	}
 
-	nameUser := claims["user"].(string)
 	order.Number = strconv.Itoa(number)
-	order.User = nameUser
+	order.User = claims["user"].(string)
 	order.StartedAt = timeNow
 	order.ResponseStatus = constants.AnswerSuccessfully
 
 	return order, nil
+}
+
+func (dbc *DBConnector) AddAccrual() {
+
 }
 
 func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*AnswerBD, error) {
@@ -195,17 +196,6 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		return answerBD, nil
 	}
 
-	//rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], number)
-	//if err != nil {
-	//	constants.Logger.ErrorLog(err)
-	//	return nil, err
-	//}
-	//if !rows.Next() {
-	//	answerBD.Answer = constants.AnswerInvalidOrderNumber
-	//	return answerBD, nil
-	//}
-	//conn.Release()
-
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
@@ -214,8 +204,6 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 
 	rows, err := conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
 	if err != nil {
-		fmt.Println("--------------1", err)
-		fmt.Println("--------------1", err.Error())
 		return nil, err
 	}
 
@@ -224,8 +212,6 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
-			fmt.Println("--------------2", err)
-			fmt.Println("--------------2", err.Error())
 			return nil, err
 		}
 		if bdb.Total < sumWithdraw {
@@ -241,17 +227,11 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	}
 	defer conn.Release()
 	//TODO: Добавляем спсанные баллы
-	fmt.Println("--------------4.3-начало добавления списания")
-	fmt.Println("--------------4.3-", sumWithdraw, time.Now(), "MINUS", number)
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual, sumWithdraw, time.Now(), "MINUS", number); err != nil {
-		fmt.Println("--------------4.3", err)
-		fmt.Println("--------------4.3", err.Error())
 		return nil, err
 	}
-	fmt.Println("--------------4.3-окончание добавления списания")
 	rows.Close()
 
-	fmt.Println("--------------4.4-проверка на существование ордера")
 	conn.Release()
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
@@ -264,7 +244,6 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 		return nil, err
 	}
 	if !rows.Next() {
-		fmt.Println("--------------4.4-ордер не существует. создаем")
 		rows.Close()
 		_, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
 		if err != nil {
@@ -333,14 +312,12 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, e
 
 func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD, error) {
 	answerBD := new(AnswerBD)
-	fmt.Println("++++++++++++++++++8.1-")
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Release()
-	fmt.Println("++++++++++++++++++8.2-")
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
 		answerBD.Answer = constants.AnswerUserNotAuthenticated
@@ -353,29 +330,22 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		return nil, err
 	}
 	defer rows.Close()
-	fmt.Println("++++++++++++++++++8.3-")
 	var arrBalance []BalanceDB
 	for rows.Next() {
 		var bdb BalanceDB
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
-			fmt.Println("++++++++++++++++++8.3-err", err)
 			constants.Logger.ErrorLog(err)
 			continue
 		}
-		fmt.Println("++++++++++++++++++8.3-строка", bdb)
 		ss, err := GetOrder4AS(addressAcSys, bdb.Number)
 		if err == nil {
-			fmt.Println("++++++++++++++++++8.3-SS", ss.Accrual)
 			bdb.Current = ss.Accrual
 		}
 		arrBalance = append(arrBalance, bdb)
 	}
-	fmt.Println("++++++++++++++++++8.3+")
-	fmt.Println("++++++++++++++++++8.4-")
 	if len(arrBalance) == 0 {
-		fmt.Println("++++++++++++++++++8-пусто")
 		answerBD.Answer = constants.AnswerNoContent
 		return answerBD, nil
 	}
@@ -387,7 +357,6 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 	}
 	tbdb.Current = tbdb.Current - tbdb.Withdrawn
 
-	fmt.Println("++++++++++++++++++8.5-")
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +367,6 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 	}
 	answerBD.JSON = listBalansJSON
 	answerBD.Answer = constants.AnswerSuccessfully
-	fmt.Println("++++++++++++++++++8.6-")
 	return answerBD, nil
 }
 
@@ -478,7 +446,6 @@ func (dbc *DBConnector) UserOrders(name string) (*AnswerBD, error) {
 
 func (dbc *DBConnector) SetNextStatus() (*AnswerBD, error) {
 	var arrOrders []orderDB
-	fmt.Println("************************1")
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
@@ -670,7 +637,6 @@ func (dbc *DBConnector) VerificationOrderExists(number int) (*AnswerBD, error) {
 
 func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSystem) (*AnswerBD, error) {
 
-	fmt.Println("************************2")
 	answer := new(AnswerBD)
 
 	ctx := context.Background()
@@ -687,7 +653,7 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 	defer conn.Release()
 
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual,
-		fullScoringSystem.ScoringSystem.Order, fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS"); err != nil {
+		fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS", fullScoringSystem.ScoringSystem.Order); err != nil {
 
 		_ = tx.Rollback(ctx)
 		return nil, err

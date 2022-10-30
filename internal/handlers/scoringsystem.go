@@ -81,7 +81,7 @@ func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSyste
 		return fullScoringSystem, nil
 	}
 
-	addressPost := fmt.Sprintf("http://%s/api/orders/%s", srv.AddressAcSys, number)
+	addressPost := fmt.Sprintf("%s/api/orders/%s", srv.AddressAcSys, number)
 	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
 	if err != nil {
 		return fullScoringSystem, err
@@ -165,7 +165,7 @@ func (srv *Server) AddItemsScoringSystem(good *Goods) {
 		return
 	}
 
-	addressPost := fmt.Sprintf("http://%s/api/goods", srv.AddressAcSys)
+	addressPost := fmt.Sprintf("%s/api/goods", srv.AddressAcSys)
 	req, err := http.NewRequest("POST", addressPost, bytes.NewBuffer(jsonStr))
 	if err != nil {
 		constants.Logger.ErrorLog(err)
