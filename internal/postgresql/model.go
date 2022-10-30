@@ -10,33 +10,14 @@ import (
 	"github.com/andynikk/gofermart/internal/environment"
 )
 
-type AnswerBD struct {
-	Answer constants.Answer
-	JSON   []byte
-}
-
 type Order struct {
 	*OrderUser
 	ResponseStatus constants.Answer
 }
 
-func NewOrder() *Order {
-	return &Order{
-		OrderUser:      new(OrderUser),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
 type Account struct {
 	*User
 	ResponseStatus constants.Answer
-}
-
-func NewAccount() *Account {
-	return &Account{
-		User:           new(User),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
 }
 
 type User struct {
@@ -64,13 +45,6 @@ type OrdersDB struct {
 	ResponseStatus constants.Answer
 }
 
-func NewOrdersDB() *OrdersDB {
-	return &OrdersDB{
-		OrderDB:        []OrderDB{},
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
 type OrderDB struct {
 	Number     string    `json:"number"`
 	Status     string    `json:"status"`
@@ -83,23 +57,9 @@ type Balance struct {
 	ResponseStatus constants.Answer
 }
 
-func NewBalance() *Balance {
-	return &Balance{
-		BalanceDB:      new(BalanceDB),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
 type Balances struct {
 	TotalBalanceDB *totalBalanceDB
 	ResponseStatus constants.Answer
-}
-
-func NewBalances() *Balances {
-	return &Balances{
-		TotalBalanceDB: new(totalBalanceDB),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
 }
 
 type BalanceDB struct {
@@ -119,13 +79,6 @@ type Withdraws struct {
 	ResponseStatus constants.Answer
 }
 
-func NewWithdraws() *Withdraws {
-	return &Withdraws{
-		WithdrawDB:     []withdrawDB{},
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
 type withdrawDB struct {
 	Order       string    `json:"order"`
 	Withdraw    float64   `json:"sum"`
@@ -134,24 +87,14 @@ type withdrawDB struct {
 }
 
 type FullScoringSystem struct {
-	ScoringSystem *ScoringSystem
-	Answer        constants.Answer
+	ScoringSystem  *ScoringSystem
+	ResponseStatus constants.Answer
 }
 
 type ScoringSystem struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
 	Accrual float64 `json:"accrual"`
-}
-
-type GoodOrderSS struct {
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-}
-
-type OrderSS struct {
-	Order       string        `json:"order"`
-	GoodOrderSS []GoodOrderSS `json:"goods"`
 }
 
 type DBConnector struct {
@@ -239,4 +182,54 @@ func (o *Withdraws) FromJSON(byte []byte) error {
 		return err
 	}
 	return nil
+}
+
+// create object
+func NewOrder() *Order {
+	return &Order{
+		OrderUser:      new(OrderUser),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewAccount() *Account {
+	return &Account{
+		User:           new(User),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewOrdersDB() *OrdersDB {
+	return &OrdersDB{
+		OrderDB:        []OrderDB{},
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewBalance() *Balance {
+	return &Balance{
+		BalanceDB:      new(BalanceDB),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewBalances() *Balances {
+	return &Balances{
+		TotalBalanceDB: new(totalBalanceDB),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewWithdraws() *Withdraws {
+	return &Withdraws{
+		WithdrawDB:     []withdrawDB{},
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewScoringService() *FullScoringSystem {
+	return &FullScoringSystem{
+		ScoringSystem:  new(ScoringSystem),
+		ResponseStatus: constants.AnswerSuccessfully,
+	}
 }

@@ -401,45 +401,40 @@ func (dbc *DBConnector) UserWithdrawal(tkn string) (*Withdraws, error) {
 	return withdraws, nil
 }
 
-func (dbc *DBConnector) VerificationOrderExists(number int) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) VerificationOrderExists(number int) (constants.Answer, error) {
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QuerySelectAccrualPLUSS, number)
 	if err != nil {
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		answerBD.Answer = constants.AnswerConflict
-		return answerBD, err
+		return constants.AnswerConflict, nil
 	}
 
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, err
+	return constants.AnswerSuccessfully, nil
 }
 
-func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSystem) (*AnswerBD, error) {
-
-	answer := new(AnswerBD)
+func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSystem) (constants.Answer, error) {
 
 	ctx := context.Background()
 	tx, err := dbc.Pool.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 	defer conn.Release()
 
@@ -447,7 +442,7 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 		fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS", fullScoringSystem.ScoringSystem.Order); err != nil {
 
 		_ = tx.Rollback(ctx)
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 	conn.Release()
 
@@ -462,13 +457,12 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 	case "PROCESSED":
 		nameColum = "finishedAt"
 	default:
-		err := errors.New("непределен статус")
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 	defer conn.Release()
 
@@ -478,13 +472,12 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 					WHERE "orderID"=$1;`, nameColum), fullScoringSystem.ScoringSystem.Order, time.Now()); err != nil {
 
 		_ = tx.Rollback(ctx)
-		return nil, err
+		return constants.AnswerErrorServer, err
 	}
 
 	_ = tx.Commit(ctx)
 
-	answer.Answer = constants.AnswerSuccessfully
-	return answer, nil
+	return constants.AnswerSuccessfully, nil
 }
 
 func CreateModeLDB(Pool *pgxpool.Pool) {

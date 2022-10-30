@@ -48,7 +48,7 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 			return
 		default:
 			fss, _ := srv.GetScoringSystem(number)
-			if fss.Answer != constants.AnswerTooManyRequests {
+			if fss.ResponseStatus != constants.AnswerTooManyRequests {
 				data <- fss
 			}
 			time.Sleep(1 * time.Second)
@@ -57,10 +57,7 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 }
 
 func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSystem, error) {
-	fullScoringSystem := new(postgresql.FullScoringSystem)
-	ScoringSystem := new(postgresql.ScoringSystem)
-
-	fullScoringSystem.ScoringSystem = ScoringSystem
+	fullScoringSystem := postgresql.NewScoringService()
 
 	ctx := context.Background()
 	conn, err := srv.Pool.Acquire(ctx)
@@ -77,7 +74,7 @@ func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSyste
 	defer rows.Close()
 
 	if !rows.Next() {
-		fullScoringSystem.Answer = constants.AnswerInvalidOrderNumber
+		fullScoringSystem.ResponseStatus = constants.AnswerInvalidOrderNumber
 		return fullScoringSystem, nil
 	}
 
@@ -99,7 +96,7 @@ func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSyste
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 429 {
-		fullScoringSystem.Answer = constants.AnswerTooManyRequests
+		fullScoringSystem.ResponseStatus = constants.AnswerTooManyRequests
 		return fullScoringSystem, nil
 	}
 
@@ -130,7 +127,7 @@ func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSyste
 		return fullScoringSystem, err
 	}
 
-	fullScoringSystem.Answer = constants.AnswerSuccessfully
+	fullScoringSystem.ResponseStatus = constants.AnswerSuccessfully
 	return fullScoringSystem, nil
 }
 
@@ -144,7 +141,7 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 	if err != nil {
 		return err
 	}
-	if answer.Answer != constants.AnswerSuccessfully {
+	if answer != constants.AnswerSuccessfully {
 		return nil
 	}
 
@@ -153,7 +150,7 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 		return err
 	}
 
-	fullScoringSystem.Answer = answer.Answer
+	fullScoringSystem.ResponseStatus = answer
 	return nil
 }
 

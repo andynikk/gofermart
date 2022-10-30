@@ -360,7 +360,7 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 		constants.Logger.ErrorLog(err)
 	}
 
-	w.WriteHeader(HTTPAnswer(fullScoringSystem.Answer))
+	w.WriteHeader(HTTPAnswer(fullScoringSystem.ResponseStatus))
 	_, err = w.Write(listAccrualJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
@@ -377,25 +377,5 @@ func (srv *Server) executFSS(data chan *postgresql.FullScoringSystem) (fullScori
 		default:
 			fmt.Println(0)
 		}
-	}
-}
-
-func ProcessResponseGET(w http.ResponseWriter, answer *postgresql.AnswerBD) {
-	if answer.Answer != constants.AnswerSuccessfully {
-		_, err := w.Write(answer.JSON)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-
-		w.WriteHeader(HTTPAnswer(answer.Answer))
-		return
-	}
-
-	w.WriteHeader(HTTPAnswer(answer.Answer))
-	_, err := w.Write(answer.JSON)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
