@@ -113,6 +113,7 @@ type totalBalanceDB struct {
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 }
+
 type Withdraws struct {
 	WithdrawDB     []withdrawDB
 	ResponseStatus constants.Answer

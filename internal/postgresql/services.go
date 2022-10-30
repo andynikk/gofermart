@@ -5,19 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/compression"
-	"github.com/gorilla/mux"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 
+	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/cryptography"
-	"github.com/andynikk/gofermart/internal/random"
 	"github.com/andynikk/gofermart/internal/token"
 )
 
@@ -400,197 +399,6 @@ func (dbc *DBConnector) UserWithdrawal(tkn string) (*Withdraws, error) {
 
 	withdraws.ResponseStatus = constants.AnswerSuccessfully
 	return withdraws, nil
-}
-
-func (dbc *DBConnector) UserOrders(name string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
-
-	ctx := context.Background()
-	conn, err := dbc.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Release()
-
-	rows, err := conn.Query(ctx, constants.QueryUserOrdersTemplate, name)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		answerBD.Answer = constants.AnswerConflict
-		return answerBD, nil
-	}
-
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
-}
-
-func (dbc *DBConnector) SetNextStatus() (*AnswerBD, error) {
-	var arrOrders []OrderDB
-	ctx := context.Background()
-	conn, err := dbc.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Release()
-
-	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, "")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var ord OrderDB
-
-		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual, &ord.UploadedAt)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			continue
-		}
-
-		nextStatus := ""
-		switch ord.Status {
-		case constants.StatusPROCESSING.String():
-			randStatus := random.RandInt(2, 3)
-			if randStatus == 3 {
-				nextStatus = "failedAt"
-			} else {
-				nextStatus = "finishedAt"
-			}
-		default:
-			nextStatus = "startedAt"
-		}
-		ord.Status = nextStatus
-		arrOrders = append(arrOrders, ord)
-	}
-	conn.Release()
-
-	min := 100.10
-	max := 501.98
-
-	for _, val := range arrOrders {
-		conn, err := dbc.Pool.Acquire(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if _, err = conn.Query(ctx,
-			fmt.Sprintf(`UPDATE gofermart.orders
-					SET "%s"=$2
-					WHERE "orderID"=$1;`, val.Status), &val.Number, time.Now()); err != nil {
-			constants.Logger.ErrorLog(err)
-			continue
-		}
-		conn.Release()
-
-		if val.Status == "finishedAt" {
-			conn, err := dbc.Pool.Acquire(ctx)
-			if err != nil {
-				return nil, err
-			}
-			defer conn.Release()
-
-			accrual := random.RandPriceItem(min, max)
-			if _, err = conn.Query(ctx, constants.QueryAddAccrual, &val.Number, accrual, time.Now(), "PLUS"); err != nil {
-				constants.Logger.ErrorLog(err)
-				continue
-			}
-			conn.Release()
-		}
-	}
-
-	answerBD := new(AnswerBD)
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
-}
-
-func (dbc *DBConnector) UserAccrual(tkn string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
-	var arrWithdraw []withdrawDB
-
-	ctx := context.Background()
-	conn, err := dbc.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Release()
-
-	claims, ok := token.ExtractClaims(tkn)
-	if !ok {
-		answerBD.Answer = constants.AnswerUserNotAuthenticated
-		return answerBD, nil
-	}
-
-	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var bdb withdrawDB
-
-		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw, &bdb.Current)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			continue
-		}
-		arrWithdraw = append(arrWithdraw, bdb)
-	}
-
-	if len(arrWithdraw) == 0 {
-		answerBD.Answer = constants.AnswerNoContent
-		return answerBD, nil
-	}
-
-	listWithdrawalJSON, err := json.MarshalIndent(arrWithdraw, "", " ")
-	if err != nil {
-		return nil, err
-	}
-	answerBD.JSON = listWithdrawalJSON
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
-}
-
-func (dbc *DBConnector) ListNotAccrualOrders() (*AnswerBD, error) {
-	var arrOrderDB []OrderDB
-
-	ctx := context.Background()
-	conn, err := dbc.Pool.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := conn.Query(ctx, `SELECT * FROM gofermart.orders AS orders WHERE `+
-		`orders."finishedAt" ISNULL AND orders."failedAt" ISNULL`)
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		var ord OrderDB
-
-		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			continue
-		}
-		if ord.Status == "REGISTERED" {
-			ord.Status = "NEW"
-		}
-		arrOrderDB = append(arrOrderDB, ord)
-	}
-
-	answerBD := new(AnswerBD)
-	listWithdrawalJSON, err := json.MarshalIndent(arrOrderDB, "", " ")
-	if err != nil {
-		return nil, err
-	}
-	answerBD.JSON = listWithdrawalJSON
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
 }
 
 func (dbc *DBConnector) VerificationOrderExists(number int) (*AnswerBD, error) {
