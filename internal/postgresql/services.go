@@ -594,7 +594,7 @@ func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
 		fmt.Println(arrBody)
 	}
 
-	scoringSystem := new(ScoringSystem)
+	scoringSystem := NewScoringService()
 	if err = json.NewDecoder(body).Decode(scoringSystem); err != nil {
 		return nil, err
 	}

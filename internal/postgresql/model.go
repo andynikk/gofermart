@@ -139,16 +139,16 @@ func (o *OrderWithdraw) FromJSON(byte []byte) error {
 	return nil
 }
 
-func (o *User) InJSON() ([]byte, error) {
-	strJSON, err := json.MarshalIndent(o, "", " ")
+func (o *Account) InJSON() ([]byte, error) {
+	strJSON, err := json.MarshalIndent(o.User, "", " ")
 	if err != nil {
 		return nil, err
 	}
 	return strJSON, nil
 }
 
-func (o *User) FromJSON(byte []byte) error {
-	if err := json.Unmarshal(byte, &o); err != nil {
+func (o *Account) FromJSON(byte []byte) error {
+	if err := json.Unmarshal(byte, &o.User); err != nil {
 		return err
 	}
 	return nil
@@ -227,9 +227,24 @@ func NewWithdraws() *Withdraws {
 	}
 }
 
-func NewScoringService() *FullScoringSystem {
+func NewFullScoringService() *FullScoringSystem {
 	return &FullScoringSystem{
 		ScoringSystem:  new(ScoringSystem),
 		ResponseStatus: constants.AnswerSuccessfully,
+	}
+}
+
+func NewScoringService() *ScoringSystem {
+	return &ScoringSystem{
+		Order:   "",
+		Accrual: 0.00,
+		Status:  "",
+	}
+}
+
+func NewOrderWithdraw() *OrderWithdraw {
+	return &OrderWithdraw{
+		Order:    "",
+		Withdraw: 0.00,
 	}
 }

@@ -35,15 +35,15 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	User := new(postgresql.User)
-	if err := User.FromJSON(respByte); err != nil {
+	Account := postgresql.NewAccount()
+	if err := Account.FromJSON(respByte); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 1.2 TODO: Регистрация пользователя в БД.
 	// 1.2.1 TODO: Ищем пользовотеля в таблице БД. Если находим, то не создаем. Пароль кэшируется
-	account, err := srv.DBConnector.NewAccount(User.Name, User.Password)
+	account, err := srv.DBConnector.NewAccount(Account.Name, Account.Password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -57,7 +57,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 1.3 TODO: Создание токена
 	// 1.3.1 TODO: Если пользователь добавлен создаем токен
-	ct := token.Claims{Authorized: true, User: User.Name, Exp: constants.TimeLiveToken}
+	ct := token.Claims{Authorized: true, User: Account.Name, Exp: constants.TimeLiveToken}
 	if tokenString, err = ct.GenerateJWT(); err != nil {
 		w.Header().Add("Authorization", "")
 		http.Error(w, "Ошибка получения токена", http.StatusInternalServerError)
@@ -86,14 +86,14 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	User := new(postgresql.User)
-	if err := User.FromJSON(respByte); err != nil {
+	Account := postgresql.NewAccount()
+	if err := Account.FromJSON(respByte); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 2.1 TODO: Аутентификации пользователя в БД
-	account, err := srv.DBConnector.GetAccount(User.Name, User.Password)
+	account, err := srv.DBConnector.GetAccount(Account.Name, Account.Password)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -107,7 +107,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2.2 TODO: Создание токена
-	tc := token.Claims{Authorized: true, User: User.Name, Exp: constants.TimeLiveToken}
+	tc := token.Claims{Authorized: true, User: Account.Name, Exp: constants.TimeLiveToken}
 	if tokenString, err = tc.GenerateJWT(); err != nil {
 		w.Header().Add("Authorization", "")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -170,7 +170,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 		min := 1000.00
 		max := 3000.00
 
-		goodOrderSS := new(GoodOrderSS)
+		goodOrderSS := NewGoodOrderSS()
 		goodOrderSS.Description = random.RandNameItem(2, 3)
 		goodOrderSS.Price = random.RandPriceItem(min, max)
 
@@ -213,7 +213,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
 	}
 
-	orderWithdraw := new(postgresql.OrderWithdraw)
+	orderWithdraw := postgresql.NewOrderWithdraw()
 	if err := orderWithdraw.FromJSON(respByte); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)

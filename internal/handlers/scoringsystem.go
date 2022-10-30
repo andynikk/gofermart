@@ -57,7 +57,7 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 }
 
 func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSystem, error) {
-	fullScoringSystem := postgresql.NewScoringService()
+	fullScoringSystem := postgresql.NewFullScoringService()
 
 	ctx := context.Background()
 	conn, err := srv.Pool.Acquire(ctx)
@@ -211,4 +211,11 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 	defer resp.Body.Close()
 
 	return nil
+}
+
+func NewGoodOrderSS() *GoodOrderSS {
+	return &GoodOrderSS{
+		Description: "",
+		Price:       0.00,
+	}
 }
