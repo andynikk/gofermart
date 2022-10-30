@@ -36,8 +36,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	User := new(postgresql.User)
-
-	if err := json.Unmarshal(respByte, &User); err != nil {
+	if err := User.FromJSON(respByte); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -88,7 +87,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	User := new(postgresql.User)
-	if err := json.Unmarshal(respByte, &User); err != nil {
+	if err := User.FromJSON(respByte); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -215,7 +214,7 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orderWithdraw := new(postgresql.OrderWithdraw)
-	if err := json.Unmarshal(respByte, &orderWithdraw); err != nil {
+	if err := orderWithdraw.FromJSON(respByte); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
 		return
@@ -254,40 +253,29 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	// 5.1 TODO: Получение списка ордеров по токену в БД
 	// 5.1.1 TODO: Из токена получаем имя пользователя
 	// 5.1.2 TODO: По имени пользователя получаем ордера
-	answer, err := srv.DBConnector.ListOrder(tokenHeader, srv.AddressAcSys)
+	orders, err := srv.DBConnector.ListOrder(tokenHeader, srv.AddressAcSys)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	strJSON, err := orders.InJSON()
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 5.2 TODO: Вывод ответа
-	ProcessResponseGET(w, answer)
-}
-
-// 6 TODO: Для тестирования сделал API для продвижения ордера на следующий (рандомный) этап (/api/user/orders-next-status)
-func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++7 (/api/user/orders-next-status)")
-	// 6.1 TODO: Двигаем ордер на следующий этап
-	// 6.1.1 TODO: Получаем спсок ордеров по пользователю из токена
-	// 6.1.2 TODO: Назначаем следующий этап. Если это статус PROCESSING, тогда выбираем рандомно INVALID или PROCESSED
-	// 6.1.3 TODO: Устанавливаем статус и текущую дату соответствующей колонки
-	// 6.1.4 TODO: Если это финальный этап (PROCESSED), рассчитываем баллы лояльности. Рандомное число между 100.10 и 501.98
-	// 6.1.5 TODO: Добавляем баллы в ДБ
-	answer, err := srv.DBConnector.SetNextStatus()
+	w.WriteHeader(HTTPAnswer(orders.ResponseStatus))
+	_, err = w.Write(strJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
-	}
-
-	w.WriteHeader(HTTPAnswer(answer.Answer))
-	if err := r.Body.Close(); err != nil {
-		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 // 7 TODO: получаем баланс пользователя
 func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++8 (/api/user/balance)")
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
@@ -298,20 +286,28 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	// 7.1 TODO: Получаем баланс пользователя
 	// 7.1 TODO: По токену получаем пользователя
 	// 7.2 TODO: По пользовотелю получаем общий баланс начисленных и списанных баллов
-	answer, err := srv.DBConnector.BalansOrders(tokenHeader, srv.AddressAcSys)
+	balances, err := srv.DBConnector.BalancesOrders(tokenHeader, srv.AddressAcSys)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
 	}
 	// 7.3 TODO: Вывод ответа
-	ProcessResponseGET(w, answer)
+	strJSON, err := balances.InJSON()
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(HTTPAnswer(balances.ResponseStatus))
+	_, err = w.Write(strJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // 8 TODO: Получение информации о выводе средств
 func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("++++++++++++++++++9 (/api/user/withdrawals)")
-	fmt.Println("++++++++++++++++++9 (/api/user/balance/withdrawals)")
-
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
@@ -320,14 +316,25 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 8.1 TODO: Получение информации о выводе средств в разрезе ордера
-	answer, err := srv.DBConnector.UserWithdrawal(tokenHeader)
+	withdraws, err := srv.DBConnector.UserWithdrawal(tokenHeader)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
 	}
 
 	// 8.2 TODO: Вывод ответа
-	ProcessResponseGET(w, answer)
+	strJSON, err := withdraws.InJSON()
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(HTTPAnswer(withdraws.ResponseStatus))
+	_, err = w.Write(strJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // 9 TODO: Взаимодействие с системой расчёта начислений баллов лояльности
@@ -378,7 +385,7 @@ func ProcessResponseGET(w http.ResponseWriter, answer *postgresql.AnswerBD) {
 		_, err := w.Write(answer.JSON)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		w.WriteHeader(HTTPAnswer(answer.Answer))
@@ -389,6 +396,6 @@ func ProcessResponseGET(w http.ResponseWriter, answer *postgresql.AnswerBD) {
 	_, err := w.Write(answer.JSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

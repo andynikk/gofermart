@@ -182,6 +182,8 @@ func (dbc *DBConnector) AddAccrual() {
 
 func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*Balance, error) {
 	balance := new(Balance)
+	balance.BalanceDB = BalanceDB{}
+
 	balance.Number = number
 	balance.Withdrawn = sumWithdraw
 
@@ -258,15 +260,16 @@ func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float
 	return balance, nil
 }
 
-func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*OrdersDB, error) {
+	ordersDB := new(OrdersDB)
+	ordersDB.OrderDB = []OrderDB{}
 
 	ctx := context.Background()
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		answerBD.Answer = constants.AnswerUserNotAuthenticated
-		return answerBD, nil
+		ordersDB.ResponseStatus = constants.AnswerUserNotAuthenticated
+		return ordersDB, nil
 	}
 
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -281,9 +284,8 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, e
 	}
 	defer rows.Close()
 
-	var arrOrders []orderDB
 	for rows.Next() {
-		var ord orderDB
+		var ord OrderDB
 
 		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual, &ord.UploadedAt)
 		if err != nil {
@@ -296,25 +298,21 @@ func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*AnswerBD, e
 			ord.Status = ss.Status
 			ord.Accrual = ss.Accrual
 		}
-		arrOrders = append(arrOrders, ord)
+		ordersDB.OrderDB = append(ordersDB.OrderDB, ord)
+	}
+	if len(ordersDB.OrderDB) == 0 {
+		ordersDB.ResponseStatus = constants.AnswerNoContent
+		return ordersDB, nil
 	}
 
-	if len(arrOrders) == 0 {
-		answerBD.Answer = constants.AnswerNoContent
-		return answerBD, nil
-	}
-
-	listOrderJSON, err := json.MarshalIndent(arrOrders, "", " ")
-	if err != nil {
-		return nil, err
-	}
-	answerBD.JSON = listOrderJSON
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
+	ordersDB.ResponseStatus = constants.AnswerSuccessfully
+	return ordersDB, nil
 }
 
-func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balances, error) {
+	balances := new(Balances)
+	balances.BalanceDB = []BalanceDB{}
+
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
@@ -323,8 +321,8 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 	defer conn.Release()
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		answerBD.Answer = constants.AnswerUserNotAuthenticated
-		return answerBD, nil
+		balances.ResponseStatus = constants.AnswerUserNotAuthenticated
+		return balances, nil
 	}
 
 	//rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
@@ -333,7 +331,7 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		return nil, err
 	}
 	defer rows.Close()
-	var arrBalance []BalanceDB
+
 	for rows.Next() {
 		var bdb BalanceDB
 
@@ -346,15 +344,15 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		if err == nil {
 			bdb.Current = ss.Accrual
 		}
-		arrBalance = append(arrBalance, bdb)
+		balances.BalanceDB = append(balances.BalanceDB, bdb)
 	}
-	if len(arrBalance) == 0 {
-		answerBD.Answer = constants.AnswerNoContent
-		return answerBD, nil
+	if len(balances.BalanceDB) == 0 {
+		balances.ResponseStatus = constants.AnswerNoContent
+		return balances, nil
 	}
 
 	var tbdb totalBalanceDB
-	for _, val := range arrBalance {
+	for _, val := range balances.BalanceDB {
 		tbdb.Withdrawn = tbdb.Withdrawn + val.Withdrawn
 		tbdb.Current = tbdb.Current + val.Current
 	}
@@ -364,17 +362,13 @@ func (dbc *DBConnector) BalansOrders(tkn string, addressAcSys string) (*AnswerBD
 		return nil, err
 	}
 
-	listBalansJSON, err := json.MarshalIndent(tbdb, "", " ")
-	if err != nil {
-		return nil, err
-	}
-	answerBD.JSON = listBalansJSON
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
+	balances.ResponseStatus = constants.AnswerSuccessfully
+	return balances, nil
 }
 
-func (dbc *DBConnector) UserWithdrawal(tkn string) (*AnswerBD, error) {
-	answerBD := new(AnswerBD)
+func (dbc *DBConnector) UserWithdrawal(tkn string) (*Withdraws, error) {
+	withdraws := new(Withdraws)
+	withdraws.WithdrawDB = []withdrawDB{}
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -385,18 +379,17 @@ func (dbc *DBConnector) UserWithdrawal(tkn string) (*AnswerBD, error) {
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		answerBD.Answer = constants.AnswerUserNotAuthenticated
-		return answerBD, nil
+		withdraws.ResponseStatus = constants.AnswerUserNotAuthenticated
+		return withdraws, nil
 	}
 
 	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
 	if err != nil {
-		answerBD.Answer = constants.AnswerInvalidFormat
-		return answerBD, nil
+		withdraws.ResponseStatus = constants.AnswerInvalidFormat
+		return withdraws, nil
 	}
 	defer rows.Close()
 
-	var arrWithdraw []withdrawDB
 	for rows.Next() {
 		var bdb withdrawDB
 
@@ -405,21 +398,16 @@ func (dbc *DBConnector) UserWithdrawal(tkn string) (*AnswerBD, error) {
 			constants.Logger.ErrorLog(err)
 			continue
 		}
-		arrWithdraw = append(arrWithdraw, bdb)
+		withdraws.WithdrawDB = append(withdraws.WithdrawDB, bdb)
 	}
 
-	if len(arrWithdraw) == 0 {
-		answerBD.Answer = constants.AnswerNoContent
-		return answerBD, nil
+	if len(withdraws.WithdrawDB) == 0 {
+		withdraws.ResponseStatus = constants.AnswerNoContent
+		return withdraws, nil
 	}
 
-	listWithdrawalJSON, err := json.MarshalIndent(arrWithdraw, "", " ")
-	if err != nil {
-		return nil, err
-	}
-	answerBD.JSON = listWithdrawalJSON
-	answerBD.Answer = constants.AnswerSuccessfully
-	return answerBD, nil
+	withdraws.ResponseStatus = constants.AnswerSuccessfully
+	return withdraws, nil
 }
 
 func (dbc *DBConnector) UserOrders(name string) (*AnswerBD, error) {
@@ -448,7 +436,7 @@ func (dbc *DBConnector) UserOrders(name string) (*AnswerBD, error) {
 }
 
 func (dbc *DBConnector) SetNextStatus() (*AnswerBD, error) {
-	var arrOrders []orderDB
+	var arrOrders []OrderDB
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
@@ -463,7 +451,7 @@ func (dbc *DBConnector) SetNextStatus() (*AnswerBD, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var ord orderDB
+		var ord OrderDB
 
 		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual, &ord.UploadedAt)
 		if err != nil {
@@ -575,7 +563,7 @@ func (dbc *DBConnector) UserAccrual(tkn string) (*AnswerBD, error) {
 }
 
 func (dbc *DBConnector) ListNotAccrualOrders() (*AnswerBD, error) {
-	var arrOrderDB []orderDB
+	var arrOrderDB []OrderDB
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
@@ -590,7 +578,7 @@ func (dbc *DBConnector) ListNotAccrualOrders() (*AnswerBD, error) {
 	}
 
 	for rows.Next() {
-		var ord orderDB
+		var ord OrderDB
 
 		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual)
 		if err != nil {
