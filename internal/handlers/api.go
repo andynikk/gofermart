@@ -3,14 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
 
-	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
 	"github.com/andynikk/gofermart/internal/token"
@@ -19,23 +17,10 @@ import (
 // POST
 // 1 TODO: Регистрация пользователя
 func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
-	body := r.Body
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	err := compression.DecompressBody(contentEncoding, body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	respByte, err := io.ReadAll(body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
 
 	Account := postgresql.NewAccount()
-	if err := Account.FromJSON(respByte); err != nil {
+
+	if err := Account.FromJSON([]byte(r.Header.Get("Middleware-Body"))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -70,23 +55,10 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 // 2 TODO: Аутентификации пользователя
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
-	body := r.Body
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	err := compression.DecompressBody(contentEncoding, body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	respByte, err := io.ReadAll(body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
 
 	Account := postgresql.NewAccount()
-	if err := Account.FromJSON(respByte); err != nil {
+
+	if err := Account.FromJSON([]byte(r.Header.Get("Middleware-Body"))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -120,22 +92,9 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 // 3 TODO: Добавление нового ордера
 func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
-	body := r.Body
-	contentEncoding := r.Header.Get("Content-Encoding")
 
-	err := compression.DecompressBody(contentEncoding, body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	respByte, err := io.ReadAll(body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	numOrder, err := strconv.Atoi(string(respByte))
+	respByte := r.Header.Get("Middleware-Body")
+	numOrder, err := strconv.Atoi(respByte)
 	if err != nil || numOrder == 0 {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "bad number order", http.StatusUnprocessableEntity)
@@ -193,23 +152,9 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 // 4 TODO: Списание баллов лояльности
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
-	body := r.Body
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	err := compression.DecompressBody(contentEncoding, body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-	}
-
-	respByte, err := io.ReadAll(body)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
-	}
 
 	orderWithdraw := postgresql.NewOrderWithdraw()
-	if err := orderWithdraw.FromJSON(respByte); err != nil {
+	if err := orderWithdraw.FromJSON([]byte(r.Header.Get("Middleware-Body"))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
 		return

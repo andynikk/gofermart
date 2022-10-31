@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -91,9 +92,34 @@ func (srv *Server) Shutdown() {
 	constants.Logger.InfoLog("server stopped")
 }
 
+func ByteInHeader(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer h.ServeHTTP(w, r)
+
+		body := r.Body
+		contentEncoding := r.Header.Get("Content-Encoding")
+
+		err := compression.DecompressBody(contentEncoding, body)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
+		}
+
+		byteHeader, err := io.ReadAll(body)
+		if err != nil {
+			constants.Logger.ErrorLog(err)
+			http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
+		}
+
+		r.Header.Set("Middleware-Body", string(byteHeader))
+		w.Header().Set("Middleware-Body", string(byteHeader))
+	})
+}
+
 // 1 TODO: инициализация роутера и хендлеров
 func (srv *Server) initRouters() {
 	r := mux.NewRouter()
+	r.Use(ByteInHeader)
 
 	//GET
 	r.Handle("/api/user/orders", token.IsAuthorized(srv.apiUserOrdersGET)).Methods("GET")

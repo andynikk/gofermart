@@ -57,14 +57,14 @@ func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handle
 
 		if r.Header["Authorization"] != nil {
 
-			tokenFindMatches(endpoint, w, r)
+			TokenFindMatches(endpoint, w, r)
 			return
 		}
-		tokenNotFind(w)
+		TokenNotFind(w)
 	})
 }
 
-func tokenFindMatches(endpoint func(http.ResponseWriter, *http.Request), w http.ResponseWriter, r *http.Request) {
+func TokenFindMatches(endpoint func(http.ResponseWriter, *http.Request), w http.ResponseWriter, r *http.Request) {
 	token, err := jwt.Parse(r.Header["Authorization"][0], func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("there was an error")
@@ -82,7 +82,7 @@ func tokenFindMatches(endpoint func(http.ResponseWriter, *http.Request), w http.
 	}
 }
 
-func tokenNotFind(w http.ResponseWriter) {
+func TokenNotFind(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
 	_, err := w.Write([]byte("Not Authorized"))
 	if err != nil {
