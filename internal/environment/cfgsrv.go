@@ -7,6 +7,7 @@ import (
 
 	"github.com/caarlos0/env/v6"
 
+	"github.com/andynikk/gofermart/internal/channel"
 	"github.com/andynikk/gofermart/internal/constants"
 )
 
@@ -20,6 +21,7 @@ type ServerConfig struct {
 	Address        string
 	AccrualAddress string
 	DemoMode       bool
+	ChanData       chan *channel.FullScoringOrder
 }
 
 func NewConfigServer() (*ServerConfig, error) {
@@ -57,6 +59,7 @@ func NewConfigServer() (*ServerConfig, error) {
 		addresServer,
 		addressAcSysServer,
 		demoModeServer,
+		make(chan *channel.FullScoringOrder),
 	}
 	return &sc, err
 }

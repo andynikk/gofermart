@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/channel"
 	"net/http"
 	"strconv"
 	"strings"
@@ -57,7 +58,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	Account := postgresql.NewAccount()
 
-	if err := Account.FromJSON([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+	if err := Account.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -95,7 +96,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 	Account := postgresql.NewAccount()
 
-	if err := Account.FromJSON([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+	if err := Account.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -191,7 +192,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 
 	orderWithdraw := postgresql.NewOrderWithdraw()
-	if err := orderWithdraw.FromJSON([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+	if err := orderWithdraw.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
 		return
@@ -236,7 +237,7 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	strJSON, err := orders.InJSON()
+	strJSON, err := orders.Marshal()
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -269,7 +270,7 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
 	}
 	// 7.3 TODO: Вывод ответа
-	strJSON, err := balances.InJSON()
+	strJSON, err := balances.Marshal()
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -300,7 +301,7 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	}
 
 	// 8.2 TODO: Вывод ответа
-	strJSON, err := withdraws.InJSON()
+	strJSON, err := withdraws.Marshal()
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -318,21 +319,23 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	number := mux.Vars(r)["number"]
 
-	data := make(chan *postgresql.FullScoringOrder)
+	//data := make(chan *postgresql.FullScoringOrder)
 	// 9.1 TODO: Запускаем горутину с номером и каналом, где будет хранится ответ черного ящика
 	// 9.1.1 TODO: Горутина запрашивает ответ от черного ящика.
 	// 9.1.2 TODO: Если статус ответа не 429, то в канал пишется ответ горутина заканчивает свою работу
 	// 9.1.3 TODO: Если статус ответа 429, то горутина засыпает на секунду и повторяет запрос к черному ящику
 	// 9.1.3.1 TODO: так крутится пока не будет статус не 429
-	go srv.ScoringOrder(number, data)
+	//go srv.ScoringOrder(number, data)
+	go srv.ScoringOrder(number)
 
 	// 9.2 TODO: Добавляет данные в БД. Вечный цикл с прослушиванием канала.
 	// 9.2.1 TODO: Если в канале есть данные, то в БД добавляется запись начисления баллов ллояльности
 	// 9.2.2 TODO: Если запись с начисление по ордеру есть в базе, то вторая запись не происходит
-	fullScoringOrder := srv.executFSS(data)
-	close(data)
+	//fullScoringOrder := srv.executFSS(data)
+	//close(data)
+	fullScoringOrder := srv.executFSS()
 
-	listAccrualJSON, err := json.MarshalIndent(fullScoringOrder.ScoringOrder, "", " ")
+	listAccrualJSON, err := json.MarshalIndent(fullScoringOrder, "", " ")
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
@@ -344,11 +347,14 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (srv *Server) executFSS(data chan *postgresql.FullScoringOrder) (fullScoringOrder *postgresql.FullScoringOrder) {
+// func (srv *Server) executFSS(data chan *postgresql.FullScoringOrder) (fullScoringOrder *postgresql.FullScoringOrder) {
+func (srv *Server) executFSS() (fullScoringOrder *channel.FullScoringOrder) {
 	for {
 		select {
-		case <-data:
-			fullScoringOrder := <-data
+		//case <-data:
+		case <-srv.ChanData:
+			//fullScoringOrder := <-data
+			fullScoringOrder := <-srv.ChanData
 			_ = srv.SetValueScoringOrder(fullScoringOrder)
 			return fullScoringOrder
 		default:

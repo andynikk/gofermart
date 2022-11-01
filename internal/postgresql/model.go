@@ -83,25 +83,14 @@ type withdrawDB struct {
 	Current     float64   `json:"current,omitempty"`
 }
 
-type FullScoringOrder struct {
-	ScoringOrder   *ScoringOrder
-	ResponseStatus constants.Answer
-}
-
-type ScoringOrder struct {
-	Order   string  `json:"order"`
-	Status  string  `json:"status"`
-	Accrual float64 `json:"accrual"`
-}
-
 type MapHandlerJSON = map[string]HandlerJSON
 
 type HandlerJSON interface {
-	InJSON() ([]byte, error)
-	FromJSON([]byte) error
+	Marshal() ([]byte, error)
+	Unmarshal([]byte) error
 }
 
-func (o *OrdersDB) InJSON() ([]byte, error) {
+func (o *OrdersDB) Marshal() ([]byte, error) {
 	strJSON, err := json.MarshalIndent(o.OrderDB, "", " ")
 	if err != nil {
 		return nil, err
@@ -109,14 +98,14 @@ func (o *OrdersDB) InJSON() ([]byte, error) {
 	return strJSON, nil
 }
 
-func (o *OrdersDB) FromJSON(byte []byte) error {
+func (o *OrdersDB) Unmarshal(byte []byte) error {
 	if err := json.Unmarshal(byte, &o.OrderDB); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *OrderWithdraw) InJSON() ([]byte, error) {
+func (o *OrderWithdraw) Marshal() ([]byte, error) {
 	strJSON, err := json.MarshalIndent(o, "", " ")
 	if err != nil {
 		return nil, err
@@ -124,14 +113,14 @@ func (o *OrderWithdraw) InJSON() ([]byte, error) {
 	return strJSON, nil
 }
 
-func (o *OrderWithdraw) FromJSON(byte []byte) error {
+func (o *OrderWithdraw) Unmarshal(byte []byte) error {
 	if err := json.Unmarshal(byte, &o); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *Account) InJSON() ([]byte, error) {
+func (o *Account) Marshal() ([]byte, error) {
 	strJSON, err := json.MarshalIndent(o.User, "", " ")
 	if err != nil {
 		return nil, err
@@ -139,14 +128,14 @@ func (o *Account) InJSON() ([]byte, error) {
 	return strJSON, nil
 }
 
-func (o *Account) FromJSON(byte []byte) error {
+func (o *Account) Unmarshal(byte []byte) error {
 	if err := json.Unmarshal(byte, &o.User); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *Balances) InJSON() ([]byte, error) {
+func (o *Balances) Marshal() ([]byte, error) {
 	strJSON, err := json.MarshalIndent(o.TotalBalanceDB, "", " ")
 	if err != nil {
 		return nil, err
@@ -154,14 +143,14 @@ func (o *Balances) InJSON() ([]byte, error) {
 	return strJSON, nil
 }
 
-func (o *Balances) FromJSON(byte []byte) error {
+func (o *Balances) Unmarshal(byte []byte) error {
 	if err := json.Unmarshal(byte, &o.TotalBalanceDB); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *Withdraws) InJSON() ([]byte, error) {
+func (o *Withdraws) Marshal() ([]byte, error) {
 	strJSON, err := json.MarshalIndent(o.WithdrawDB, "", " ")
 	if err != nil {
 		return nil, err
@@ -169,7 +158,7 @@ func (o *Withdraws) InJSON() ([]byte, error) {
 	return strJSON, nil
 }
 
-func (o *Withdraws) FromJSON(byte []byte) error {
+func (o *Withdraws) Unmarshal(byte []byte) error {
 	if err := json.Unmarshal(byte, &o.WithdrawDB); err != nil {
 		return err
 	}
@@ -216,21 +205,6 @@ func NewWithdraws() *Withdraws {
 	return &Withdraws{
 		WithdrawDB:     []withdrawDB{},
 		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
-func NewFullScoringService() *FullScoringOrder {
-	return &FullScoringOrder{
-		ScoringOrder:   new(ScoringOrder),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
-func NewScoringService() *ScoringOrder {
-	return &ScoringOrder{
-		Order:   "",
-		Accrual: 0.00,
-		Status:  "",
 	}
 }
 

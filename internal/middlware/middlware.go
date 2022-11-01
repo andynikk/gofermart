@@ -11,7 +11,7 @@ import (
 	"github.com/andynikk/gofermart/internal/constants"
 )
 
-func BodyInHeader(h http.Handler) http.Handler {
+func GzipMiddlware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer h.ServeHTTP(w, r)
 

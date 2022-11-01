@@ -4,16 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/channel"
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/random"
+	"github.com/andynikk/gofermart/internal/utils"
 	"io"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/andynikk/gofermart/internal/compression"
-	"github.com/andynikk/gofermart/internal/constants"
-	"github.com/andynikk/gofermart/internal/postgresql"
-	"github.com/andynikk/gofermart/internal/random"
-	"github.com/andynikk/gofermart/internal/utils"
 )
 
 type Goods struct {
@@ -32,13 +31,15 @@ type OrderSS struct {
 	GoodOrderSS []GoodOrderSS `json:"goods"`
 }
 
-func (srv *Server) ScoringOrder(number string, data chan *postgresql.FullScoringOrder) {
+// func (srv *Server) ScoringOrder(number string, data chan *postgresql.FullScoringOrder) {
+func (srv *Server) ScoringOrder(number string) {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
 	for {
 		select {
-		case <-data:
+		//case <-data:
+		case <-srv.ChanData:
 			cancelFunc()
 			return
 		case <-ctx.Done():
@@ -47,15 +48,18 @@ func (srv *Server) ScoringOrder(number string, data chan *postgresql.FullScoring
 		default:
 			fss, _ := srv.GetScoringOrder(number)
 			if fss.ResponseStatus != constants.AnswerTooManyRequests {
-				data <- fss
+				//data <- fss
+				srv.ChanData <- fss
+			} else {
+				time.Sleep(1 * time.Second)
 			}
-			time.Sleep(1 * time.Second)
+
 		}
 	}
 }
 
-func (srv *Server) GetScoringOrder(number string) (*postgresql.FullScoringOrder, error) {
-	fullScoringOrder := postgresql.NewFullScoringService()
+func (srv *Server) GetScoringOrder(number string) (*channel.FullScoringOrder, error) {
+	fullScoringOrder := channel.NewFullScoringService()
 
 	ctx := context.Background()
 	conn, err := srv.Pool.Acquire(ctx)
@@ -116,7 +120,7 @@ func (srv *Server) GetScoringOrder(number string) (*postgresql.FullScoringOrder,
 	return fullScoringOrder, nil
 }
 
-func (srv *Server) SetValueScoringOrder(fullScoringOrder *postgresql.FullScoringOrder) error {
+func (srv *Server) SetValueScoringOrder(fullScoringOrder *channel.FullScoringOrder) error {
 	order, err := strconv.Atoi(fullScoringOrder.ScoringOrder.Order)
 	if err != nil {
 		return err

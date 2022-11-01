@@ -60,7 +60,7 @@ func (srv *Server) Run() {
 // 1 TODO: инициализация роутера и хендлеров
 func (srv *Server) initRouters() {
 	r := mux.NewRouter()
-	r.Use(middlware.BodyInHeader)
+	r.Use(middlware.GzipMiddlware)
 
 	//GET
 	r.Handle("/api/user/orders", middlware.IsAuthorized(srv.apiUserOrdersGET)).Methods("GET")

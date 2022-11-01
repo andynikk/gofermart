@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/channel"
+
 	"io"
 	"strconv"
 	"strings"
@@ -422,7 +424,7 @@ func (dbc *DBConnector) VerificationOrderExists(number int) (constants.Answer, e
 	return constants.AnswerSuccessfully, nil
 }
 
-func (dbc *DBConnector) SetValueScoringOrder(fullScoringOrder *FullScoringOrder) (constants.Answer, error) {
+func (dbc *DBConnector) SetValueScoringOrder(fullScoringOrder *channel.FullScoringOrder) (constants.Answer, error) {
 
 	ctx := context.Background()
 	tx, err := dbc.Pool.Begin(ctx)
@@ -548,7 +550,7 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 	}
 }
 
-func GetOrder4AS(addressAcSys string, number string) (*ScoringOrder, error) {
+func GetOrder4AS(addressAcSys string, number string) (*channel.ScoringOrder, error) {
 	addressPost := fmt.Sprintf("%s/api/orders/%s", addressAcSys, number)
 	resp, err := utils.GETQuery(addressPost)
 	if err != nil {
@@ -578,7 +580,7 @@ func GetOrder4AS(addressAcSys string, number string) (*ScoringOrder, error) {
 		fmt.Println(arrBody)
 	}
 
-	ScoringOrder := NewScoringService()
+	ScoringOrder := channel.NewScoringService()
 	if err = json.NewDecoder(body).Decode(ScoringOrder); err != nil {
 		return nil, err
 	}
