@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/compression"
-	"github.com/gorilla/mux"
-	"github.com/theplant/luhn"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
+	"github.com/theplant/luhn"
+
+	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
 	"github.com/andynikk/gofermart/internal/token"

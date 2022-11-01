@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/utils"
 	"io"
 	"strconv"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/cryptography"
 	"github.com/andynikk/gofermart/internal/token"
+	"github.com/andynikk/gofermart/internal/utils"
 )
 
 func (dbc *DBConnector) NewAccount(name string, password string) (*Account, error) {

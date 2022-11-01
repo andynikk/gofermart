@@ -22,7 +22,7 @@ type ServerConfig struct {
 	DemoMode       bool
 }
 
-func (sc *ServerConfig) SetConfigServer() {
+func NewConfigServer() (*ServerConfig, error) {
 
 	addressPtr := flag.String("a", constants.PortServer, "порт сервера")
 	addressAcSysPtr := flag.String("r", constants.PortAcSysServer, "сервер системы балов")
@@ -35,9 +35,9 @@ func (sc *ServerConfig) SetConfigServer() {
 		log.Fatal(err)
 	}
 
-	adresServer := cfgENV.Address
+	addresServer := cfgENV.Address
 	if _, ok := os.LookupEnv("ADDRESS"); !ok {
-		adresServer = *addressPtr
+		addresServer = *addressPtr
 	}
 
 	addressAcSysServer := cfgENV.AccrualAddress
@@ -53,8 +53,10 @@ func (sc *ServerConfig) SetConfigServer() {
 		demoModeServer = *demoMode
 	}
 
-	sc.Address = adresServer
-	sc.AccrualAddress = addressAcSysServer
-	sc.DemoMode = demoModeServer
-
+	sc := ServerConfig{
+		addresServer,
+		addressAcSysServer,
+		demoModeServer,
+	}
+	return &sc, err
 }

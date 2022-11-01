@@ -1,21 +1,16 @@
 package constants
 
 import (
-	"github.com/andynikk/gofermart/internal/logger"
 	"time"
+
+	"github.com/andynikk/gofermart/internal/logger"
 )
 
-type Statuses int
 type Answer int
 
 const (
-	StatusNEW Statuses = iota
-	StatusPROCESSING
-	StatusINVALID
-	StatusPROCESSED
-
-	AnswerSuccessfully  Answer = iota //200
-	AnswerInvalidFormat               //
+	AnswerSuccessfully Answer = iota
+	AnswerInvalidFormat
 	AnswerLoginBusy
 	AnswerErrorServer
 	AnswerInvalidLoginPassword
@@ -215,10 +210,6 @@ const (
 	HeaderAuthorization  = "Authorization"
 	HeaderMiddlewareBody = "Middleware-Body"
 )
-
-func (s Statuses) String() string {
-	return [...]string{"NEW", "PROCESSING", "INVALID", "PROCESSED"}[s]
-}
 
 var HashKey = []byte("taekwondo")
 var TimeLiveToken time.Duration = 5

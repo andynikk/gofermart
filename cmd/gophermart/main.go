@@ -6,7 +6,6 @@ import (
 
 // TODO: запуск сервера
 func main() {
-
 	srv := handlers.NewByConfig()
 	srv.Run()
 }

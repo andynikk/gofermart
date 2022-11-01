@@ -2,9 +2,10 @@ package middlware
 
 import (
 	"errors"
-	"github.com/golang-jwt/jwt/v4"
 	"io"
 	"net/http"
+
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"

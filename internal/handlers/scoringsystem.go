@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/random"
-	"github.com/andynikk/gofermart/internal/utils"
 	"io"
 	"strconv"
 	"strings"
@@ -14,6 +12,8 @@ import (
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
+	"github.com/andynikk/gofermart/internal/random"
+	"github.com/andynikk/gofermart/internal/utils"
 )
 
 type Goods struct {

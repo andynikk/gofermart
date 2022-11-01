@@ -2,7 +2,6 @@ package environment
 
 import (
 	"flag"
-	"log"
 	"os"
 
 	"github.com/caarlos0/env/v6"
@@ -20,7 +19,7 @@ type DBConfigENV struct {
 	Key         string `env:"KEY"`
 }
 
-func (dbc *DBConfig) SetConfigDB() {
+func NewConfigDB() (*DBConfig, error) {
 
 	keyDatabaseDsn := flag.String("d", "", "строка соединения с базой")
 	keyFlag := flag.String("k", "", "ключ хеша")
@@ -29,7 +28,7 @@ func (dbc *DBConfig) SetConfigDB() {
 	var cfgENV DBConfigENV
 	err := env.Parse(&cfgENV)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	databaseDsn := cfgENV.DatabaseDsn
@@ -45,7 +44,9 @@ func (dbc *DBConfig) SetConfigDB() {
 		keyHash = string(constants.HashKey[:])
 	}
 
-	dbc.DatabaseDsn = databaseDsn
-	dbc.Key = keyHash
-
+	dbc := DBConfig{
+		databaseDsn,
+		keyHash,
+	}
+	return &dbc, err
 }

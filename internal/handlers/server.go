@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/andynikk/gofermart/internal/middlware"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/environment"
+	"github.com/andynikk/gofermart/internal/middlware"
 	"github.com/andynikk/gofermart/internal/postgresql"
 )
 
@@ -19,27 +19,25 @@ type IServer interface {
 	initRouters()
 	initDataBase()
 	initConfig()
-	initScoringOrder()
+	initScoringSystem()
 	Run()
+}
+
+func NewByConfig() (s IServer) {
+	var srv IServer = &Server{}
+
+	srv.initRouters()
+	srv.initDataBase()
+	srv.initConfig()
+	srv.initScoringSystem()
+
+	return srv
 }
 
 type Server struct {
 	*mux.Router
 	*postgresql.DBConnector
 	*environment.ServerConfig
-}
-
-func NewByConfig() (s IServer) {
-	//srv = new(Server)
-
-	var srv IServer = &Server{}
-
-	srv.initRouters()
-	srv.initDataBase()
-	srv.initConfig()
-	srv.initScoringOrder()
-
-	return srv
 }
 
 func (srv *Server) Run() {
@@ -101,22 +99,26 @@ func (srv *Server) initRouters() {
 
 // 2 TODO: инициализация базы данных
 func (srv *Server) initDataBase() {
-	srv.DBConnector = new(postgresql.DBConnector)
-	if err := srv.DBConnector.PoolDB(); err != nil {
+	dbc, err := postgresql.NewDBConnector()
+	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
+	srv.DBConnector = dbc
 	postgresql.CreateModeLDB(srv.Pool)
 }
 
 // 3 TODO: инициализация конфигурации
 func (srv *Server) initConfig() {
-	srv.ServerConfig = new(environment.ServerConfig)
-	srv.ServerConfig.SetConfigServer()
+	srvConfig, err := environment.NewConfigServer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	srv.ServerConfig = srvConfig
 
 }
 
 // 4 TODO: инициализация системы лояльности
-func (srv *Server) initScoringOrder() {
+func (srv *Server) initScoringSystem() {
 	if !srv.DemoMode {
 		return
 	}
