@@ -32,8 +32,7 @@ type Server struct {
 func NewByConfig() (s IServer) {
 	//srv = new(Server)
 
-	var srv IServer
-	srv = &Server{}
+	var srv IServer = &Server{}
 
 	srv.initRouters()
 	srv.initDataBase()
