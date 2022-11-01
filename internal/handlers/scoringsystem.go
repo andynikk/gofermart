@@ -1,18 +1,15 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/andynikk/gofermart/internal/random"
+	"github.com/andynikk/gofermart/internal/utils"
 	"io"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gorilla/mux"
 
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
@@ -79,18 +76,8 @@ func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSyste
 		return fullScoringSystem, nil
 	}
 
-	addressPost := fmt.Sprintf("%s/api/orders/%s", srv.AddressAcSys, number)
-	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
-	if err != nil {
-		return fullScoringSystem, err
-	}
-	defer req.Body.Close()
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	addressPost := fmt.Sprintf("%s/api/orders/%s", srv.AccrualAddress, number)
+	resp, err := utils.GETQuery(addressPost)
 	if err != nil {
 		return fullScoringSystem, err
 	}
@@ -100,9 +87,6 @@ func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSyste
 		fullScoringSystem.ResponseStatus = constants.AnswerTooManyRequests
 		return fullScoringSystem, nil
 	}
-
-	varsAnswer := mux.Vars(req)
-	fmt.Println(varsAnswer)
 
 	body := resp.Body
 	contentEncoding := resp.Header.Get("Content-Encoding")
@@ -163,18 +147,8 @@ func (srv *Server) AddItemsScoringSystem(good *Goods) {
 		return
 	}
 
-	addressPost := fmt.Sprintf("%s/api/goods", srv.AddressAcSys)
-	req, err := http.NewRequest("POST", addressPost, bytes.NewBuffer(jsonStr))
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		return
-	}
-	defer req.Body.Close()
-
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	addressPost := fmt.Sprintf("%s/api/goods", srv.AccrualAddress)
+	resp, err := utils.POSTQuery(addressPost, jsonStr)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		return
@@ -194,18 +168,8 @@ func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
 		return err
 	}
 
-	bufJSONStr := bytes.NewBuffer(jsonStr)
-	addressPost := fmt.Sprintf("%s/api/orders", srv.AddressAcSys)
-	req, err := http.NewRequest("POST", addressPost, bufJSONStr)
-	if err != nil {
-		return err
-	}
-	defer req.Body.Close()
-
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	addressPost := fmt.Sprintf("%s/api/orders", srv.AccrualAddress)
+	resp, err := utils.POSTQuery(addressPost, jsonStr)
 	if err != nil {
 		return err
 	}

@@ -4,10 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
-
 	"github.com/andynikk/gofermart/internal/constants"
-	"github.com/andynikk/gofermart/internal/environment"
 )
 
 type Order struct {
@@ -95,11 +92,6 @@ type ScoringSystem struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
 	Accrual float64 `json:"accrual"`
-}
-
-type DBConnector struct {
-	Pool *pgxpool.Pool
-	Cfg  *environment.DBConfig
 }
 
 type MapResult = map[string]Result

@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/utils"
 	"io"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/andynikk/gofermart/internal/compression"
@@ -551,28 +550,13 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 
 func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
 	addressPost := fmt.Sprintf("%s/api/orders/%s", addressAcSys, number)
-	req, err := http.NewRequest("GET", addressPost, strings.NewReader(""))
+	resp, err := utils.GETQuery(addressPost)
 	if err != nil {
 		return nil, err
 	}
-	defer req.Body.Close()
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Encoding", "gzip")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
 	if resp.StatusCode == 429 {
 		return nil, errors.New("429")
 	}
-
-	varsAnswer := mux.Vars(req)
-	fmt.Println(varsAnswer)
 
 	body := resp.Body
 	contentEncoding := resp.Header.Get("Content-Encoding")

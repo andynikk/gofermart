@@ -3,16 +3,19 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"strconv"
-
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
+	"net/http"
+	"strconv"
 
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
 	"github.com/andynikk/gofermart/internal/token"
 )
+
+func (srv *Server) HandlerNotFound(rw http.ResponseWriter, r *http.Request) {
+	http.Error(rw, "Page "+r.URL.Path+" not found", http.StatusNotFound)
+}
 
 // POST
 // 1 TODO: Регистрация пользователя
@@ -20,7 +23,7 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	Account := postgresql.NewAccount()
 
-	if err := Account.FromJSON([]byte(r.Header.Get("Middleware-Body"))); err != nil {
+	if err := Account.FromJSON([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -34,22 +37,22 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenString := ""
 	if account.ResponseStatus != constants.AnswerSuccessfully {
-		w.Header().Add("Authorization", tokenString)
+		w.Header().Add(constants.HeaderAuthorization, tokenString)
 		w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 		return
 	}
 
 	// 1.3 TODO: Создание токена
 	// 1.3.1 TODO: Если пользователь добавлен создаем токен
-	ct := token.Claims{Authorized: true, User: Account.Name, Exp: constants.TimeLiveToken}
-	if tokenString, err = ct.GenerateJWT(); err != nil {
-		w.Header().Add("Authorization", "")
+	tc := token.NewClaims(Account.Name)
+	if tokenString, err = tc.GenerateJWT(); err != nil {
+		w.Header().Add(constants.HeaderAuthorization, "")
 		http.Error(w, "Ошибка получения токена", http.StatusInternalServerError)
 		return
 	}
 
 	// 1.4 TODO: Добавление токена в Header
-	w.Header().Add("Authorization", tokenString)
+	w.Header().Add(constants.HeaderAuthorization, tokenString)
 	w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 }
 
@@ -58,7 +61,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 	Account := postgresql.NewAccount()
 
-	if err := Account.FromJSON([]byte(r.Header.Get("Middleware-Body"))); err != nil {
+	if err := Account.FromJSON([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -72,28 +75,28 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 	tokenString := ""
 	if account.ResponseStatus != constants.AnswerSuccessfully {
-		w.Header().Add("Authorization", tokenString)
+		w.Header().Add(constants.HeaderAuthorization, tokenString)
 		w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 		return
 	}
 
 	// 2.2 TODO: Создание токена
-	tc := token.Claims{Authorized: true, User: Account.Name, Exp: constants.TimeLiveToken}
+	tc := token.NewClaims(Account.Name)
 	if tokenString, err = tc.GenerateJWT(); err != nil {
-		w.Header().Add("Authorization", "")
+		w.Header().Add(constants.HeaderAuthorization, "")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// 2.2 TODO: Добавление токена в Header
-	w.Header().Add("Authorization", tokenString)
+	w.Header().Add(constants.HeaderAuthorization, tokenString)
 	w.WriteHeader(HTTPAnswer(account.ResponseStatus))
 }
 
 // 3 TODO: Добавление нового ордера
 func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
-	respByte := r.Header.Get("Middleware-Body")
+	respByte := r.Header.Get(constants.HeaderMiddlewareBody)
 	numOrder, err := strconv.Atoi(respByte)
 	if err != nil || numOrder == 0 {
 		constants.Logger.ErrorLog(err)
@@ -108,8 +111,8 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenHeader := ""
-	if r.Header["Authorization"] != nil {
-		tokenHeader = r.Header["Authorization"][0]
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
 	// 3.1 TODO: Добавление нового ордера в БД.
@@ -154,7 +157,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 
 	orderWithdraw := postgresql.NewOrderWithdraw()
-	if err := orderWithdraw.FromJSON([]byte(r.Header.Get("Middleware-Body"))); err != nil {
+	if err := orderWithdraw.FromJSON([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
 		return
@@ -163,8 +166,8 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(orderWithdraw)
 
 	tokenHeader := ""
-	if r.Header["Authorization"] != nil {
-		tokenHeader = r.Header["Authorization"][0]
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
 	// 4.1 TODO: Списание баллов лояльности в БД
@@ -187,13 +190,13 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
-	if r.Header["Authorization"] != nil {
-		tokenHeader = r.Header["Authorization"][0]
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 	// 5.1 TODO: Получение списка ордеров по токену в БД
 	// 5.1.1 TODO: Из токена получаем имя пользователя
 	// 5.1.2 TODO: По имени пользователя получаем ордера
-	orders, err := srv.DBConnector.ListOrder(tokenHeader, srv.AddressAcSys)
+	orders, err := srv.DBConnector.ListOrder(tokenHeader, srv.AccrualAddress)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -219,14 +222,14 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
-	if r.Header["Authorization"] != nil {
-		tokenHeader = r.Header["Authorization"][0]
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
 	// 7.1 TODO: Получаем баланс пользователя
 	// 7.1 TODO: По токену получаем пользователя
 	// 7.2 TODO: По пользовотелю получаем общий баланс начисленных и списанных баллов
-	balances, err := srv.DBConnector.BalancesOrders(tokenHeader, srv.AddressAcSys)
+	balances, err := srv.DBConnector.BalancesOrders(tokenHeader, srv.AccrualAddress)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
@@ -251,8 +254,8 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 
 	tokenHeader := ""
-	if r.Header["Authorization"] != nil {
-		tokenHeader = r.Header["Authorization"][0]
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
 	// 8.1 TODO: Получение информации о выводе средств в разрезе ордера

@@ -1,9 +1,8 @@
 package constants
 
 import (
-	"time"
-
 	"github.com/andynikk/gofermart/internal/logger"
+	"time"
 )
 
 type Statuses int
@@ -212,6 +211,9 @@ const (
 	QueryUpdateStartedAt = `UPDATE gofermart.orders
 								SET "startedAt" = $1
 								WHERE "orderID" = $2;`
+
+	HeaderAuthorization  = "Authorization"
+	HeaderMiddlewareBody = "Middleware-Body"
 )
 
 func (s Statuses) String() string {
@@ -219,5 +221,5 @@ func (s Statuses) String() string {
 }
 
 var HashKey = []byte("taekwondo")
-var TimeLiveToken = time.Now().Add(time.Hour * 5).Unix()
+var TimeLiveToken time.Duration = 5
 var Logger logger.Logger

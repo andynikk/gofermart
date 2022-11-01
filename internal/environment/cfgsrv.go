@@ -11,15 +11,15 @@ import (
 )
 
 type ServerConfigENV struct {
-	Address      string `env:"ADDRESS" envDefault:"localhost:8080"`
-	AcSysAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8000"`
-	DemoMode     string `env:"DEMO_MODE" envDefault:"0"`
+	Address        string `env:"ADDRESS" envDefault:"localhost:8080"`
+	AccrualAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8000"`
+	DemoMode       string `env:"DEMO_MODE" envDefault:"0"`
 }
 
 type ServerConfig struct {
-	Address      string
-	AddressAcSys string
-	DemoMode     bool
+	Address        string
+	AccrualAddress string
+	DemoMode       bool
 }
 
 func (sc *ServerConfig) SetConfigServer() {
@@ -40,7 +40,7 @@ func (sc *ServerConfig) SetConfigServer() {
 		adresServer = *addressPtr
 	}
 
-	addressAcSysServer := cfgENV.AcSysAddress
+	addressAcSysServer := cfgENV.AccrualAddress
 	if _, ok := os.LookupEnv("ACCRUAL_SYSTEM_ADDRESS"); !ok {
 		addressAcSysServer = *addressAcSysPtr
 	}
@@ -54,7 +54,7 @@ func (sc *ServerConfig) SetConfigServer() {
 	}
 
 	sc.Address = adresServer
-	sc.AddressAcSys = addressAcSysServer
+	sc.AccrualAddress = addressAcSysServer
 	sc.DemoMode = demoModeServer
 
 }
