@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
@@ -15,6 +18,36 @@ import (
 
 func (srv *Server) HandlerNotFound(rw http.ResponseWriter, r *http.Request) {
 	http.Error(rw, "Page "+r.URL.Path+" not found", http.StatusNotFound)
+}
+
+func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
+
+	content := srv.StartPage()
+
+	acceptEncoding := rq.Header.Get("Accept-Encoding")
+
+	metricsHTML := []byte(content)
+	byteMterics := bytes.NewBuffer(metricsHTML).Bytes()
+	compData, err := compression.Compress(byteMterics)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
+
+	var bodyBate []byte
+	if strings.Contains(acceptEncoding, "gzip") {
+		rw.Header().Add("Content-Encoding", "gzip")
+		bodyBate = compData
+	} else {
+		bodyBate = metricsHTML
+	}
+
+	rw.Header().Add("Content-Type", "text/html")
+	if _, err := rw.Write(bodyBate); err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+
+	//rw.WriteHeader(http.StatusOK)
 }
 
 // POST
@@ -321,4 +354,8 @@ func (srv *Server) executFSS(data chan *postgresql.FullScoringOrder) (fullScorin
 			fmt.Println(0)
 		}
 	}
+}
+
+func (srv *Server) Shutdown() {
+	constants.Logger.InfoLog("server stopped")
 }
