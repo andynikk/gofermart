@@ -422,7 +422,7 @@ func (dbc *DBConnector) VerificationOrderExists(number int) (constants.Answer, e
 	return constants.AnswerSuccessfully, nil
 }
 
-func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSystem) (constants.Answer, error) {
+func (dbc *DBConnector) SetValueScoringOrder(fullScoringOrder *FullScoringOrder) (constants.Answer, error) {
 
 	ctx := context.Background()
 	tx, err := dbc.Pool.Begin(ctx)
@@ -438,7 +438,7 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 	defer conn.Release()
 
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual,
-		fullScoringSystem.ScoringSystem.Accrual, time.Now(), "PLUS", fullScoringSystem.ScoringSystem.Order); err != nil {
+		fullScoringOrder.ScoringOrder.Accrual, time.Now(), "PLUS", fullScoringOrder.ScoringOrder.Order); err != nil {
 
 		_ = tx.Rollback(ctx)
 		return constants.AnswerErrorServer, err
@@ -446,7 +446,7 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 	conn.Release()
 
 	nameColum := ""
-	switch fullScoringSystem.ScoringSystem.Status {
+	switch fullScoringOrder.ScoringOrder.Status {
 	case "REGISTERED":
 		nameColum = "createdAt"
 	case "INVALID":
@@ -468,7 +468,7 @@ func (dbc *DBConnector) SetValueScoringSystem(fullScoringSystem *FullScoringSyst
 	if _, err = conn.Query(ctx,
 		fmt.Sprintf(`UPDATE gofermart.orders
 					SET "%s"=$2
-					WHERE "orderID"=$1;`, nameColum), fullScoringSystem.ScoringSystem.Order, time.Now()); err != nil {
+					WHERE "orderID"=$1;`, nameColum), fullScoringOrder.ScoringOrder.Order, time.Now()); err != nil {
 
 		_ = tx.Rollback(ctx)
 		return constants.AnswerErrorServer, err
@@ -548,7 +548,7 @@ func CreateModeLDB(Pool *pgxpool.Pool) {
 	}
 }
 
-func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
+func GetOrder4AS(addressAcSys string, number string) (*ScoringOrder, error) {
 	addressPost := fmt.Sprintf("%s/api/orders/%s", addressAcSys, number)
 	resp, err := utils.GETQuery(addressPost)
 	if err != nil {
@@ -578,9 +578,9 @@ func GetOrder4AS(addressAcSys string, number string) (*ScoringSystem, error) {
 		fmt.Println(arrBody)
 	}
 
-	scoringSystem := NewScoringService()
-	if err = json.NewDecoder(body).Decode(scoringSystem); err != nil {
+	ScoringOrder := NewScoringService()
+	if err = json.NewDecoder(body).Decode(ScoringOrder); err != nil {
 		return nil, err
 	}
-	return scoringSystem, nil
+	return ScoringOrder, nil
 }

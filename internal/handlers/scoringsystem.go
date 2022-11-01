@@ -32,7 +32,7 @@ type OrderSS struct {
 	GoodOrderSS []GoodOrderSS `json:"goods"`
 }
 
-func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScoringSystem) {
+func (srv *Server) ScoringOrder(number string, data chan *postgresql.FullScoringOrder) {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
@@ -45,7 +45,7 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 			cancelFunc()
 			return
 		default:
-			fss, _ := srv.GetScoringSystem(number)
+			fss, _ := srv.GetScoringOrder(number)
 			if fss.ResponseStatus != constants.AnswerTooManyRequests {
 				data <- fss
 			}
@@ -54,70 +54,70 @@ func (srv *Server) ScoringSystem(number string, data chan *postgresql.FullScorin
 	}
 }
 
-func (srv *Server) GetScoringSystem(number string) (*postgresql.FullScoringSystem, error) {
-	fullScoringSystem := postgresql.NewFullScoringService()
+func (srv *Server) GetScoringOrder(number string) (*postgresql.FullScoringOrder, error) {
+	fullScoringOrder := postgresql.NewFullScoringService()
 
 	ctx := context.Background()
 	conn, err := srv.Pool.Acquire(ctx)
 	if err != nil {
-		return fullScoringSystem, err
+		return fullScoringOrder, err
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
 	conn.Release()
 	if err != nil {
-		return fullScoringSystem, err
+		return fullScoringOrder, err
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		fullScoringSystem.ResponseStatus = constants.AnswerInvalidOrderNumber
-		return fullScoringSystem, nil
+		fullScoringOrder.ResponseStatus = constants.AnswerInvalidOrderNumber
+		return fullScoringOrder, nil
 	}
 
 	addressPost := fmt.Sprintf("%s/api/orders/%s", srv.AccrualAddress, number)
 	resp, err := utils.GETQuery(addressPost)
 	if err != nil {
-		return fullScoringSystem, err
+		return fullScoringOrder, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 429 {
-		fullScoringSystem.ResponseStatus = constants.AnswerTooManyRequests
-		return fullScoringSystem, nil
+		fullScoringOrder.ResponseStatus = constants.AnswerTooManyRequests
+		return fullScoringOrder, nil
 	}
 
 	body := resp.Body
 	contentEncoding := resp.Header.Get("Content-Encoding")
 	err = compression.DecompressBody(contentEncoding, body)
 	if err != nil {
-		return fullScoringSystem, err
+		return fullScoringOrder, err
 	}
 
 	if strings.Contains(contentEncoding, "gzip") {
 		bytBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fullScoringSystem, err
+			return fullScoringOrder, err
 		}
 
 		arrBody, err := compression.Decompress(bytBody)
 		if err != nil {
-			return fullScoringSystem, err
+			return fullScoringOrder, err
 		}
 		fmt.Println(arrBody)
 	}
 
-	if err = json.NewDecoder(body).Decode(fullScoringSystem.ScoringSystem); err != nil {
-		return fullScoringSystem, err
+	if err = json.NewDecoder(body).Decode(fullScoringOrder.ScoringOrder); err != nil {
+		return fullScoringOrder, err
 	}
 
-	fullScoringSystem.ResponseStatus = constants.AnswerSuccessfully
-	return fullScoringSystem, nil
+	fullScoringOrder.ResponseStatus = constants.AnswerSuccessfully
+	return fullScoringOrder, nil
 }
 
-func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScoringSystem) error {
-	order, err := strconv.Atoi(fullScoringSystem.ScoringSystem.Order)
+func (srv *Server) SetValueScoringOrder(fullScoringOrder *postgresql.FullScoringOrder) error {
+	order, err := strconv.Atoi(fullScoringOrder.ScoringOrder.Order)
 	if err != nil {
 		return err
 	}
@@ -130,16 +130,16 @@ func (srv *Server) SetValueScoringSystem(fullScoringSystem *postgresql.FullScori
 		return nil
 	}
 
-	answer, err = srv.DBConnector.SetValueScoringSystem(fullScoringSystem)
+	answer, err = srv.DBConnector.SetValueScoringOrder(fullScoringOrder)
 	if err != nil {
 		return err
 	}
 
-	fullScoringSystem.ResponseStatus = answer
+	fullScoringOrder.ResponseStatus = answer
 	return nil
 }
 
-func (srv *Server) AddItemsScoringSystem(good *Goods) {
+func (srv *Server) AddItemsScoringOrder(good *Goods) {
 
 	jsonStr, err := json.MarshalIndent(good, "", " ")
 	if err != nil {
@@ -161,7 +161,7 @@ func (srv *Server) AddItemsScoringSystem(good *Goods) {
 
 }
 
-func (srv *Server) AddOrderScoringSystem(orderSS *OrderSS) error {
+func (srv *Server) AddOrderScoringOrder(orderSS *OrderSS) error {
 
 	jsonStr, err := json.MarshalIndent(orderSS, "", " ")
 	if err != nil {

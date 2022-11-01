@@ -83,20 +83,20 @@ type withdrawDB struct {
 	Current     float64   `json:"current,omitempty"`
 }
 
-type FullScoringSystem struct {
-	ScoringSystem  *ScoringSystem
+type FullScoringOrder struct {
+	ScoringOrder   *ScoringOrder
 	ResponseStatus constants.Answer
 }
 
-type ScoringSystem struct {
+type ScoringOrder struct {
 	Order   string  `json:"order"`
 	Status  string  `json:"status"`
 	Accrual float64 `json:"accrual"`
 }
 
-type MapResult = map[string]Result
+type MapHandlerJSON = map[string]HandlerJSON
 
-type Result interface {
+type HandlerJSON interface {
 	InJSON() ([]byte, error)
 	FromJSON([]byte) error
 }
@@ -219,15 +219,15 @@ func NewWithdraws() *Withdraws {
 	}
 }
 
-func NewFullScoringService() *FullScoringSystem {
-	return &FullScoringSystem{
-		ScoringSystem:  new(ScoringSystem),
+func NewFullScoringService() *FullScoringOrder {
+	return &FullScoringOrder{
+		ScoringOrder:   new(ScoringOrder),
 		ResponseStatus: constants.AnswerSuccessfully,
 	}
 }
 
-func NewScoringService() *ScoringSystem {
-	return &ScoringSystem{
+func NewScoringService() *ScoringOrder {
+	return &ScoringOrder{
 		Order:   "",
 		Accrual: 0.00,
 		Status:  "",

@@ -29,7 +29,7 @@ func NewByConfig() (srv *Server) {
 	srv.initRouters()
 	srv.initDataBase()
 	srv.initConfig()
-	srv.initScoringSystem()
+	srv.initScoringOrder()
 
 	return srv
 }
@@ -142,7 +142,7 @@ func (srv *Server) initConfig() {
 }
 
 // 4 TODO: инициализация системы лояльности
-func (srv *Server) initScoringSystem() {
+func (srv *Server) initScoringOrder() {
 	if !srv.DemoMode {
 		return
 	}
@@ -152,14 +152,14 @@ func (srv *Server) initScoringSystem() {
 		15,
 		"%",
 	}
-	srv.AddItemsScoringSystem(&good)
+	srv.AddItemsScoringOrder(&good)
 
 	good = Goods{
 		"You table",
 		10,
 		"%",
 	}
-	srv.AddItemsScoringSystem(&good)
+	srv.AddItemsScoringOrder(&good)
 }
 
 func HTTPAnswer(answer constants.Answer) int {

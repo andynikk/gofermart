@@ -138,7 +138,7 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 			string(respByte),
 			arrGoodOrderSS,
 		}
-		err = srv.AddOrderScoringSystem(&orderSS)
+		err = srv.AddOrderScoringOrder(&orderSS)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			return
@@ -284,39 +284,39 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	number := mux.Vars(r)["number"]
 
-	data := make(chan *postgresql.FullScoringSystem)
+	data := make(chan *postgresql.FullScoringOrder)
 	// 9.1 TODO: Запускаем горутину с номером и каналом, где будет хранится ответ черного ящика
 	// 9.1.1 TODO: Горутина запрашивает ответ от черного ящика.
 	// 9.1.2 TODO: Если статус ответа не 429, то в канал пишется ответ горутина заканчивает свою работу
 	// 9.1.3 TODO: Если статус ответа 429, то горутина засыпает на секунду и повторяет запрос к черному ящику
 	// 9.1.3.1 TODO: так крутится пока не будет статус не 429
-	go srv.ScoringSystem(number, data)
+	go srv.ScoringOrder(number, data)
 
 	// 9.2 TODO: Добавляет данные в БД. Вечный цикл с прослушиванием канала.
 	// 9.2.1 TODO: Если в канале есть данные, то в БД добавляется запись начисления баллов ллояльности
 	// 9.2.2 TODO: Если запись с начисление по ордеру есть в базе, то вторая запись не происходит
-	fullScoringSystem := srv.executFSS(data)
+	fullScoringOrder := srv.executFSS(data)
 	close(data)
 
-	listAccrualJSON, err := json.MarshalIndent(fullScoringSystem.ScoringSystem, "", " ")
+	listAccrualJSON, err := json.MarshalIndent(fullScoringOrder.ScoringOrder, "", " ")
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
 
-	w.WriteHeader(HTTPAnswer(fullScoringSystem.ResponseStatus))
+	w.WriteHeader(HTTPAnswer(fullScoringOrder.ResponseStatus))
 	_, err = w.Write(listAccrualJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
 }
 
-func (srv *Server) executFSS(data chan *postgresql.FullScoringSystem) (fullScoringSystem *postgresql.FullScoringSystem) {
+func (srv *Server) executFSS(data chan *postgresql.FullScoringOrder) (fullScoringOrder *postgresql.FullScoringOrder) {
 	for {
 		select {
 		case <-data:
-			fullScoringSystem := <-data
-			_ = srv.SetValueScoringSystem(fullScoringSystem)
-			return fullScoringSystem
+			fullScoringOrder := <-data
+			_ = srv.SetValueScoringOrder(fullScoringOrder)
+			return fullScoringOrder
 		default:
 			fmt.Println(0)
 		}
