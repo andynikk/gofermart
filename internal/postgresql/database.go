@@ -3,8 +3,9 @@ package postgresql
 import (
 	"context"
 	"errors"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
+
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/andynikk/gofermart/internal/environment"
 )

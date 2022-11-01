@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/channel"
 
 	"io"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 
+	"github.com/andynikk/gofermart/internal/channel"
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/cryptography"

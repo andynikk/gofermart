@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/andynikk/gofermart/internal/channel"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
 
+	"github.com/andynikk/gofermart/internal/channel"
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/postgresql"
@@ -325,14 +325,11 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	// 9.1.2 TODO: Если статус ответа не 429, то в канал пишется ответ горутина заканчивает свою работу
 	// 9.1.3 TODO: Если статус ответа 429, то горутина засыпает на секунду и повторяет запрос к черному ящику
 	// 9.1.3.1 TODO: так крутится пока не будет статус не 429
-	//go srv.ScoringOrder(number, data)
 	go srv.ScoringOrder(number)
 
 	// 9.2 TODO: Добавляет данные в БД. Вечный цикл с прослушиванием канала.
 	// 9.2.1 TODO: Если в канале есть данные, то в БД добавляется запись начисления баллов ллояльности
 	// 9.2.2 TODO: Если запись с начисление по ордеру есть в базе, то вторая запись не происходит
-	//fullScoringOrder := srv.executFSS(data)
-	//close(data)
 	fullScoringOrder := srv.executFSS()
 
 	listAccrualJSON, err := json.MarshalIndent(fullScoringOrder, "", " ")
@@ -347,13 +344,10 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func (srv *Server) executFSS(data chan *postgresql.FullScoringOrder) (fullScoringOrder *postgresql.FullScoringOrder) {
 func (srv *Server) executFSS() (fullScoringOrder *channel.FullScoringOrder) {
 	for {
 		select {
-		//case <-data:
 		case <-srv.ChanData:
-			//fullScoringOrder := <-data
 			fullScoringOrder := <-srv.ChanData
 			_ = srv.SetValueScoringOrder(fullScoringOrder)
 			return fullScoringOrder

@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/andynikk/gofermart/internal/channel"
 	"github.com/andynikk/gofermart/internal/compression"
 	"github.com/andynikk/gofermart/internal/constants"
 	"github.com/andynikk/gofermart/internal/random"
 	"github.com/andynikk/gofermart/internal/utils"
-	"io"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type Goods struct {
@@ -38,7 +39,6 @@ func (srv *Server) ScoringOrder(number string) {
 
 	for {
 		select {
-		//case <-data:
 		case <-srv.ChanData:
 			cancelFunc()
 			return
@@ -48,7 +48,6 @@ func (srv *Server) ScoringOrder(number string) {
 		default:
 			fss, _ := srv.GetScoringOrder(number)
 			if fss.ResponseStatus != constants.AnswerTooManyRequests {
-				//data <- fss
 				srv.ChanData <- fss
 			} else {
 				time.Sleep(1 * time.Second)
