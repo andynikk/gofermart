@@ -18,14 +18,26 @@ import (
 	"github.com/andynikk/gofermart/internal/postgresql"
 )
 
+type IServer interface {
+	initRouters()
+	initDataBase()
+	initConfig()
+	initScoringOrder()
+	Run()
+}
+
 type Server struct {
 	*mux.Router
 	*postgresql.DBConnector
 	*environment.ServerConfig
 }
 
-func NewByConfig() (srv *Server) {
-	srv = new(Server)
+func NewByConfig() (s IServer) {
+	//srv = new(Server)
+
+	var srv IServer
+	srv = &Server{}
+
 	srv.initRouters()
 	srv.initDataBase()
 	srv.initConfig()
