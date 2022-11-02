@@ -1,11 +1,9 @@
 package channel
 
-import "github.com/andynikk/gofermart/internal/constants"
-
-type FullScoringOrder struct {
-	ScoringOrder   *ScoringOrder
-	ResponseStatus constants.Answer
-}
+//type FullScoringOrder struct {
+//	ScoringOrder   *ScoringOrder
+//	ResponseStatus constants.Answer
+//}
 
 type ScoringOrder struct {
 	Order   string  `json:"order"`
@@ -13,14 +11,14 @@ type ScoringOrder struct {
 	Accrual float64 `json:"accrual"`
 }
 
-func NewFullScoringService() *FullScoringOrder {
-	return &FullScoringOrder{
-		ScoringOrder:   new(ScoringOrder),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
+//func NewFullScoringService() *FullScoringOrder {
+//	return &FullScoringOrder{
+//		ScoringOrder:   new(ScoringOrder),
+//		ResponseStatus: constants.AnswerSuccessfully,
+//	}
+//}
 
-func NewScoringService() *ScoringOrder {
+func NewScoringOrder() *ScoringOrder {
 	return &ScoringOrder{
 		Order:   "",
 		Accrual: 0.00,

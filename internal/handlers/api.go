@@ -56,30 +56,25 @@ func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
 // 1 TODO: Регистрация пользователя
 func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
-	Account := postgresql.NewAccount()
-
-	if err := Account.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+	user := postgresql.User{}
+	if err := user.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 1.2 TODO: Регистрация пользователя в БД.
 	// 1.2.1 TODO: Ищем пользовотеля в таблице БД. Если находим, то не создаем. Пароль кэшируется
-	account, err := srv.DBConnector.NewAccount(Account.Name, Account.Password)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	tokenString := ""
-	if account.ResponseStatus != constants.AnswerSuccessfully {
+	account, err := srv.DBConnector.NewAccount(user.Name, user.Password)
+	if err != nil {
 		w.Header().Add(constants.HeaderAuthorization, tokenString)
-		w.WriteHeader(HTTPAnswer(account.ResponseStatus))
+		http.Error(w, err.Error(), HTTPErrors(err))
 		return
 	}
 
 	// 1.3 TODO: Создание токена
 	// 1.3.1 TODO: Если пользователь добавлен создаем токен
-	tc := token.NewClaims(Account.Name)
+	tc := token.NewClaims(account.Name)
 	if tokenString, err = tc.GenerateJWT(); err != nil {
 		w.Header().Add(constants.HeaderAuthorization, "")
 		http.Error(w, "Ошибка получения токена", http.StatusInternalServerError)
@@ -88,35 +83,30 @@ func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 1.4 TODO: Добавление токена в Header
 	w.Header().Add(constants.HeaderAuthorization, tokenString)
-	w.WriteHeader(HTTPAnswer(account.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 }
 
 // 2 TODO: Аутентификации пользователя
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
-	Account := postgresql.NewAccount()
+	user := postgresql.User{}
 
-	if err := Account.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+	if err := user.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// 2.1 TODO: Аутентификации пользователя в БД
-	account, err := srv.DBConnector.GetAccount(Account.Name, Account.Password)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	tokenString := ""
-	if account.ResponseStatus != constants.AnswerSuccessfully {
+	account, err := srv.DBConnector.GetAccount(user.Name, user.Password)
+	if err != nil {
 		w.Header().Add(constants.HeaderAuthorization, tokenString)
-		w.WriteHeader(HTTPAnswer(account.ResponseStatus))
+		http.Error(w, err.Error(), HTTPErrors(err))
 		return
 	}
 
 	// 2.2 TODO: Создание токена
-	tc := token.NewClaims(Account.Name)
+	tc := token.NewClaims(account.Name)
 	if tokenString, err = tc.GenerateJWT(); err != nil {
 		w.Header().Add(constants.HeaderAuthorization, "")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -125,7 +115,7 @@ func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 2.2 TODO: Добавление токена в Header
 	w.Header().Add(constants.HeaderAuthorization, tokenString)
-	w.WriteHeader(HTTPAnswer(account.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 }
 
 // 3 TODO: Добавление нового ордера
@@ -152,15 +142,12 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 
 	// 3.1 TODO: Добавление нового ордера в БД.
 	// 3.1.1 TODO: Ищем ордер по номеру. Если не находим, то создаем
-	order, err := srv.DBConnector.NewOrder(tokenHeader, numOrder)
-	if err != nil {
+	if _, err := srv.DBConnector.NewOrder(tokenHeader, numOrder); err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
 	}
-	w.WriteHeader(HTTPAnswer(order.ResponseStatus))
-	if order.ResponseStatus != constants.AnswerAccepted {
-		w.WriteHeader(HTTPAnswer(order.ResponseStatus))
-	}
+	w.WriteHeader(http.StatusAccepted)
 
 	if srv.DemoMode {
 
@@ -179,26 +166,23 @@ func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		order, err = srv.DBConnector.SetStartedAt(numOrder, tokenHeader)
-		if err != nil {
+		if _, err = srv.DBConnector.SetStartedAt(numOrder, tokenHeader); err != nil {
 			constants.Logger.ErrorLog(err)
 			return
 		}
-		w.WriteHeader(HTTPAnswer(order.ResponseStatus))
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 
 // 4 TODO: Списание баллов лояльности
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 
-	orderWithdraw := postgresql.NewOrderWithdraw()
-	if err := orderWithdraw.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+	withdraw := postgresql.Withdraw{}
+	if err := withdraw.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Println(orderWithdraw)
 
 	tokenHeader := ""
 	if r.Header[constants.HeaderAuthorization] != nil {
@@ -209,13 +193,12 @@ func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
 	// 4.1.1 TODO: Получаем баланс начисленных, списанных баллов
 	// 4.1.2 TODO: Если начисленных баллов больше, чем списанных, то разрешаем спсание
 	// 4.1.3 TODO: Добавляем запись с количеством списанных баллов
-	balance, err := srv.DBConnector.TryWithdraw(tokenHeader, orderWithdraw.Order, orderWithdraw.Withdraw)
-	if err != nil {
+	if _, err := srv.DBConnector.TryWithdraw(tokenHeader, withdraw.Order, withdraw.Withdraw); err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка списания средств", http.StatusInternalServerError)
+		http.Error(w, err.Error(), HTTPErrors(err))
 		return
 	}
-	w.WriteHeader(HTTPAnswer(balance.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 
 }
 
@@ -244,7 +227,7 @@ func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 5.2 TODO: Вывод ответа
-	w.WriteHeader(HTTPAnswer(orders.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(strJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
@@ -267,16 +250,18 @@ func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
 	balances, err := srv.DBConnector.BalancesOrders(tokenHeader, srv.AccrualAddress)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
 	}
 	// 7.3 TODO: Вывод ответа
 	strJSON, err := balances.Marshal()
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	w.WriteHeader(HTTPAnswer(balances.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(strJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
@@ -297,21 +282,24 @@ func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request)
 	withdraws, err := srv.DBConnector.UserWithdrawal(tokenHeader)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка на сервере", http.StatusInternalServerError)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
 	}
 
 	// 8.2 TODO: Вывод ответа
 	strJSON, err := withdraws.Marshal()
 	if err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
 	}
 
-	w.WriteHeader(HTTPAnswer(withdraws.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(strJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -335,22 +323,24 @@ func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
 	listAccrualJSON, err := json.MarshalIndent(fullScoringOrder, "", " ")
 	if err != nil {
 		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
 	}
 
-	w.WriteHeader(HTTPAnswer(fullScoringOrder.ResponseStatus))
+	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(listAccrualJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
 }
 
-func (srv *Server) executFSS() (fullScoringOrder *channel.FullScoringOrder) {
+func (srv *Server) executFSS() (scoringOrder *channel.ScoringOrder) {
 	for {
 		select {
 		case <-srv.ChanData:
-			fullScoringOrder := <-srv.ChanData
-			_ = srv.SetValueScoringOrder(fullScoringOrder)
-			return fullScoringOrder
+			scoringOrder := <-srv.ChanData
+			_ = srv.SetValueScoringOrder(scoringOrder)
+			return scoringOrder
 		default:
 			fmt.Println(0)
 		}

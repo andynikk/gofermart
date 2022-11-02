@@ -6,23 +6,7 @@ import (
 	"github.com/andynikk/gofermart/internal/logger"
 )
 
-type Answer int
-
 const (
-	AnswerSuccessfully Answer = iota
-	AnswerInvalidFormat
-	AnswerLoginBusy
-	AnswerErrorServer
-	AnswerInvalidLoginPassword
-	AnswerUserNotAuthenticated
-	AnswerAccepted
-	AnswerUploadedAnotherUser
-	AnswerInvalidOrderNumber
-	AnswerInsufficientFunds
-	AnswerNoContent
-	AnswerConflict
-	AnswerTooManyRequests
-
 	PortServer      = "localhost:8080"
 	PortAcSysServer = "localhost:8000"
 	DemoMode        = false

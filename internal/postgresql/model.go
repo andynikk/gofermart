@@ -3,26 +3,23 @@ package postgresql
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/andynikk/gofermart/internal/constants"
 )
 
+type MapHandlerJSON = map[string]HandlerJSON
+
+type Balances struct {
+	Number    string  `json:"number"`
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+	Total     float64 `json:"total"`
+}
+
+type TotalBalance struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
+
 type Order struct {
-	*OrderUser
-	ResponseStatus constants.Answer
-}
-
-type Account struct {
-	*User
-	ResponseStatus constants.Answer
-}
-
-type User struct {
-	Name     string `json:"login"`
-	Password string `json:"password"`
-}
-
-type OrderUser struct {
 	Number     string    `json:"orderID"`
 	User       string    `json:"userID"`
 	CreatedAt  time.Time `json:"createdAt"`
@@ -32,74 +29,68 @@ type OrderUser struct {
 	Status     string    `json:"status"`
 }
 
+type User struct {
+	Name     string `json:"login"`
+	Password string `json:"password"`
+}
+
 type OrderWithdraw struct {
 	Order    string  `json:"order"`
 	Withdraw float64 `json:"sum"`
 }
 
-type OrdersDB struct {
-	OrderDB        []OrderDB
-	ResponseStatus constants.Answer
+type OrdersAccrual struct {
+	OrderAccrual []OrderAccrual
 }
 
-type OrderDB struct {
+type OrderAccrual struct {
 	Number     string    `json:"number"`
 	Status     string    `json:"status"`
 	Accrual    float64   `json:"accrual,omitempty"`
 	UploadedAt time.Time `json:"uploaded_at" format:"RFC333"`
 }
 
-type Balance struct {
-	*BalanceDB
-	ResponseStatus constants.Answer
-}
-
-type Balances struct {
-	TotalBalanceDB *totalBalanceDB
-	ResponseStatus constants.Answer
-}
-
-type BalanceDB struct {
-	Number    string  `json:"number"`
-	Current   float64 `json:"current"`
-	Withdrawn float64 `json:"withdrawn"`
-	Total     float64 `json:"total"`
-}
-
-type totalBalanceDB struct {
-	Current   float64 `json:"current"`
-	Withdrawn float64 `json:"withdrawn"`
-}
-
 type Withdraws struct {
-	WithdrawDB     []withdrawDB
-	ResponseStatus constants.Answer
+	Withdraw []Withdraw
 }
 
-type withdrawDB struct {
+type Withdraw struct {
 	Order       string    `json:"order"`
 	Withdraw    float64   `json:"sum"`
 	DateAccrual time.Time `json:"processed_at" format:"RFC333"`
 	Current     float64   `json:"current,omitempty"`
 }
 
-type MapHandlerJSON = map[string]HandlerJSON
-
 type HandlerJSON interface {
 	Marshal() ([]byte, error)
 	Unmarshal([]byte) error
 }
 
-func (o *OrdersDB) Marshal() ([]byte, error) {
-	strJSON, err := json.MarshalIndent(o.OrderDB, "", " ")
+func (o *OrdersAccrual) Marshal() ([]byte, error) {
+	strJSON, err := json.MarshalIndent(&o.OrderAccrual, "", " ")
 	if err != nil {
 		return nil, err
 	}
 	return strJSON, nil
 }
 
-func (o *OrdersDB) Unmarshal(byte []byte) error {
-	if err := json.Unmarshal(byte, &o.OrderDB); err != nil {
+func (o *OrdersAccrual) Unmarshal(byte []byte) error {
+	if err := json.Unmarshal(byte, &o.OrderAccrual); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *Order) Marshal() ([]byte, error) {
+	strJSON, err := json.MarshalIndent(&o, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	return strJSON, nil
+}
+
+func (o *Order) Unmarshal(byte []byte) error {
+	if err := json.Unmarshal(byte, &o); err != nil {
 		return err
 	}
 	return nil
@@ -120,23 +111,23 @@ func (o *OrderWithdraw) Unmarshal(byte []byte) error {
 	return nil
 }
 
-func (o *Account) Marshal() ([]byte, error) {
-	strJSON, err := json.MarshalIndent(o.User, "", " ")
+func (o *User) Marshal() ([]byte, error) {
+	strJSON, err := json.MarshalIndent(o, "", " ")
 	if err != nil {
 		return nil, err
 	}
 	return strJSON, nil
 }
 
-func (o *Account) Unmarshal(byte []byte) error {
-	if err := json.Unmarshal(byte, &o.User); err != nil {
+func (o *User) Unmarshal(byte []byte) error {
+	if err := json.Unmarshal(byte, o); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (o *Balances) Marshal() ([]byte, error) {
-	strJSON, err := json.MarshalIndent(o.TotalBalanceDB, "", " ")
+	strJSON, err := json.MarshalIndent(o, "", " ")
 	if err != nil {
 		return nil, err
 	}
@@ -144,14 +135,14 @@ func (o *Balances) Marshal() ([]byte, error) {
 }
 
 func (o *Balances) Unmarshal(byte []byte) error {
-	if err := json.Unmarshal(byte, &o.TotalBalanceDB); err != nil {
+	if err := json.Unmarshal(byte, &o); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (o *Withdraws) Marshal() ([]byte, error) {
-	strJSON, err := json.MarshalIndent(o.WithdrawDB, "", " ")
+	strJSON, err := json.MarshalIndent(o.Withdraw, "", " ")
 	if err != nil {
 		return nil, err
 	}
@@ -159,58 +150,23 @@ func (o *Withdraws) Marshal() ([]byte, error) {
 }
 
 func (o *Withdraws) Unmarshal(byte []byte) error {
-	if err := json.Unmarshal(byte, &o.WithdrawDB); err != nil {
+	if err := json.Unmarshal(byte, &o.Withdraw); err != nil {
 		return err
 	}
 	return nil
 }
 
-// create object
-func NewOrder() *Order {
-	return &Order{
-		OrderUser:      new(OrderUser),
-		ResponseStatus: constants.AnswerSuccessfully,
+func (o *Withdraw) Marshal() ([]byte, error) {
+	strJSON, err := json.MarshalIndent(o, "", " ")
+	if err != nil {
+		return nil, err
 	}
+	return strJSON, nil
 }
 
-func NewAccount() *Account {
-	return &Account{
-		User:           new(User),
-		ResponseStatus: constants.AnswerSuccessfully,
+func (o *Withdraw) Unmarshal(byte []byte) error {
+	if err := json.Unmarshal(byte, &o); err != nil {
+		return err
 	}
-}
-
-func NewOrdersDB() *OrdersDB {
-	return &OrdersDB{
-		OrderDB:        []OrderDB{},
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
-func NewBalance() *Balance {
-	return &Balance{
-		BalanceDB:      new(BalanceDB),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
-func NewBalances() *Balances {
-	return &Balances{
-		TotalBalanceDB: new(totalBalanceDB),
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
-func NewWithdraws() *Withdraws {
-	return &Withdraws{
-		WithdrawDB:     []withdrawDB{},
-		ResponseStatus: constants.AnswerSuccessfully,
-	}
-}
-
-func NewOrderWithdraw() *OrderWithdraw {
-	return &OrderWithdraw{
-		Order:    "",
-		Withdraw: 0.00,
-	}
+	return nil
 }

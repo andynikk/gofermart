@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -32,7 +33,6 @@ type OrderSS struct {
 	GoodOrderSS []GoodOrderSS `json:"goods"`
 }
 
-// func (srv *Server) ScoringOrder(number string, data chan *postgresql.FullScoringOrder) {
 func (srv *Server) ScoringOrder(number string) {
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
@@ -46,8 +46,8 @@ func (srv *Server) ScoringOrder(number string) {
 			cancelFunc()
 			return
 		default:
-			fss, _ := srv.GetScoringOrder(number)
-			if fss.ResponseStatus != constants.AnswerTooManyRequests {
+			fss, err := srv.GetScoringOrder(number)
+			if !errors.Is(err, constants.ErrTooManyRequests) {
 				srv.ChanData <- fss
 			} else {
 				time.Sleep(1 * time.Second)
@@ -57,88 +57,79 @@ func (srv *Server) ScoringOrder(number string) {
 	}
 }
 
-func (srv *Server) GetScoringOrder(number string) (*channel.FullScoringOrder, error) {
-	fullScoringOrder := channel.NewFullScoringService()
-
+func (srv *Server) GetScoringOrder(number string) (*channel.ScoringOrder, error) {
 	ctx := context.Background()
 	conn, err := srv.Pool.Acquire(ctx)
 	if err != nil {
-		return fullScoringOrder, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
 	conn.Release()
 	if err != nil {
-		return fullScoringOrder, err
+		return nil, constants.ErrInvalidFormat
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		fullScoringOrder.ResponseStatus = constants.AnswerInvalidOrderNumber
-		return fullScoringOrder, nil
+		return nil, constants.ErrInvalidOrderNumber
 	}
 
 	addressPost := fmt.Sprintf("%s/api/orders/%s", srv.AccrualAddress, number)
 	resp, err := utils.GETQuery(addressPost)
 	if err != nil {
-		return fullScoringOrder, err
+		return nil, constants.ErrErrorServer
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 429 {
-		fullScoringOrder.ResponseStatus = constants.AnswerTooManyRequests
-		return fullScoringOrder, nil
+		return nil, constants.ErrTooManyRequests
 	}
 
 	body := resp.Body
 	contentEncoding := resp.Header.Get("Content-Encoding")
 	err = compression.DecompressBody(contentEncoding, body)
 	if err != nil {
-		return fullScoringOrder, err
+		return nil, constants.ErrErrorServer
 	}
 
 	if strings.Contains(contentEncoding, "gzip") {
 		bytBody, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return fullScoringOrder, err
+			return nil, constants.ErrErrorServer
 		}
 
 		arrBody, err := compression.Decompress(bytBody)
 		if err != nil {
-			return fullScoringOrder, err
+			return nil, constants.ErrErrorServer
 		}
 		fmt.Println(arrBody)
 	}
 
-	if err = json.NewDecoder(body).Decode(fullScoringOrder.ScoringOrder); err != nil {
-		return fullScoringOrder, err
+	scoringOrder := channel.NewScoringOrder()
+	if err = json.NewDecoder(body).Decode(scoringOrder); err != nil {
+		return nil, constants.ErrErrorServer
 	}
 
-	fullScoringOrder.ResponseStatus = constants.AnswerSuccessfully
-	return fullScoringOrder, nil
+	return scoringOrder, nil
 }
 
-func (srv *Server) SetValueScoringOrder(fullScoringOrder *channel.FullScoringOrder) error {
-	order, err := strconv.Atoi(fullScoringOrder.ScoringOrder.Order)
+func (srv *Server) SetValueScoringOrder(scoringOrder *channel.ScoringOrder) error {
+	order, err := strconv.Atoi(scoringOrder.Order)
 	if err != nil {
 		return err
 	}
 
-	answer, err := srv.DBConnector.VerificationOrderExists(order)
-	if err != nil {
+	if err := srv.DBConnector.VerificationOrderExists(order); err != nil {
 		return err
 	}
-	if answer != constants.AnswerSuccessfully {
-		return nil
-	}
 
-	answer, err = srv.DBConnector.SetValueScoringOrder(fullScoringOrder)
+	err = srv.DBConnector.SetValueScoringOrder(scoringOrder)
 	if err != nil {
 		return err
 	}
 
-	fullScoringOrder.ResponseStatus = answer
 	return nil
 }
 

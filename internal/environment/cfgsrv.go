@@ -21,7 +21,7 @@ type ServerConfig struct {
 	Address        string
 	AccrualAddress string
 	DemoMode       bool
-	ChanData       chan *channel.FullScoringOrder
+	ChanData       chan *channel.ScoringOrder
 }
 
 func NewConfigServer() (*ServerConfig, error) {
@@ -59,7 +59,7 @@ func NewConfigServer() (*ServerConfig, error) {
 		addresServer,
 		addressAcSysServer,
 		demoModeServer,
-		make(chan *channel.FullScoringOrder),
+		make(chan *channel.ScoringOrder),
 	}
 	return &sc, err
 }

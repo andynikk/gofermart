@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -138,51 +139,36 @@ func (srv *Server) initScoringSystem() {
 	srv.AddItemsScoringOrder(&good)
 }
 
-func HTTPAnswer(answer constants.Answer) int {
+func HTTPErrors(err error) int {
 
-	HTTPAnswer := 0
-	switch answer {
-	case constants.AnswerSuccessfully:
-		HTTPAnswer = http.StatusOK //200
+	HTTPAnswer := http.StatusOK
 
-	case constants.AnswerInvalidFormat:
+	if errors.Is(err, constants.ErrInvalidFormat) {
 		HTTPAnswer = http.StatusBadRequest //400
-
-	case constants.AnswerLoginBusy:
+	} else if errors.Is(err, constants.ErrLoginBusy) {
 		HTTPAnswer = http.StatusConflict //409
-
-	case constants.AnswerErrorServer:
+	} else if errors.Is(err, constants.ErrErrorServer) {
 		HTTPAnswer = http.StatusInternalServerError //500
-
-	case constants.AnswerInvalidLoginPassword:
+	} else if errors.Is(err, constants.ErrInvalidLoginPassword) {
 		HTTPAnswer = http.StatusUnauthorized //401
-
-	case constants.AnswerUserNotAuthenticated:
+	} else if errors.Is(err, constants.ErrUserNotAuthenticated) {
 		HTTPAnswer = http.StatusUnauthorized //401
-
-	case constants.AnswerAccepted:
+	} else if errors.Is(err, constants.ErrAccepted) {
 		HTTPAnswer = http.StatusAccepted //202
-
-	case constants.AnswerUploadedAnotherUser:
+	} else if errors.Is(err, constants.ErrUploadedAnotherUser) {
 		HTTPAnswer = http.StatusConflict //409
-
-	case constants.AnswerInvalidOrderNumber:
+	} else if errors.Is(err, constants.ErrInvalidOrderNumber) {
 		HTTPAnswer = http.StatusUnprocessableEntity //422
-
-	case constants.AnswerInsufficientFunds:
+	} else if errors.Is(err, constants.ErrInsufficientFunds) {
 		HTTPAnswer = http.StatusPaymentRequired //402
-
-	case constants.AnswerNoContent:
+	} else if errors.Is(err, constants.ErrNoContent) {
 		HTTPAnswer = http.StatusNoContent //204
-
-	case constants.AnswerConflict:
+	} else if errors.Is(err, constants.ErrConflict) {
 		HTTPAnswer = http.StatusConflict //409
-
-	case constants.AnswerTooManyRequests:
+	} else if errors.Is(err, constants.ErrTooManyRequests) {
 		HTTPAnswer = http.StatusTooManyRequests //429
-	default:
-		HTTPAnswer = 0
+	} else if errors.Is(err, constants.ErrOrderUpload) {
+		HTTPAnswer = http.StatusOK //200
 	}
-
 	return HTTPAnswer
 }

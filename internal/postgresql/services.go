@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"io"
 	"strconv"
 	"strings"
@@ -21,313 +20,276 @@ import (
 	"github.com/andynikk/gofermart/internal/utils"
 )
 
-func (dbc *DBConnector) NewAccount(name string, password string) (*Account, error) {
-	account := NewAccount()
-
+func (dbc *DBConnector) NewAccount(name string, password string) (*User, error) {
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QuerySelectUserWithWhereTemplate, name)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer rows.Close()
 
+	user := User{}
 	if rows.Next() {
-		err := rows.Scan(&account.Name, &account.Password)
+		err := rows.Scan(&user.Name, &user.Password)
 		if err != nil {
-			return nil, err
+			return nil, constants.ErrErrorServer
 		}
-		account.ResponseStatus = constants.AnswerLoginBusy
-		return account, nil
+		return nil, constants.ErrLoginBusy
 	}
 
 	heshVal := cryptography.HeshSHA256(password, dbc.Cfg.Key)
 	if _, err := conn.Exec(ctx, constants.QueryAddUserTemplate, name, heshVal); err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	conn.Release()
 
-	account.Name = name
-	account.Password = heshVal
-	account.ResponseStatus = constants.AnswerSuccessfully
+	user.Name = name
+	user.Password = heshVal
 
-	return account, nil
+	return &user, nil
 }
 
-func (dbc *DBConnector) GetAccount(name string, password string) (*Account, error) {
-	account := NewAccount()
+func (dbc *DBConnector) GetAccount(name string, password string) (*User, error) {
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	heshVal := cryptography.HeshSHA256(password, dbc.Cfg.Key)
 	rows, err := conn.Query(ctx, constants.QuerySelectUserWithPasswordTemplate, name, heshVal)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrInvalidFormat
 	}
 	defer rows.Close()
 
+	user := User{}
 	if rows.Next() {
-
-		_ = rows.Scan(&account.Name, &account.Password)
-		account.ResponseStatus = constants.AnswerSuccessfully
-		return account, nil
+		_ = rows.Scan(&user.Name, &user.Password)
+		return &user, nil
 
 	}
 	conn.Release()
 
-	account.ResponseStatus = constants.AnswerInvalidLoginPassword
-	return account, nil
+	return nil, constants.ErrInvalidLoginPassword
 }
 
 func (dbc *DBConnector) NewOrder(tkn string, number int) (*Order, error) {
-	order := NewOrder()
-
 	ctx := context.Background()
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		order.ResponseStatus = constants.AnswerUserNotAuthenticated
-		return order, nil
+		return nil, constants.ErrUserNotAuthenticated
 	}
 
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryOrderWhereNumTemplate, "", number)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrInvalidFormat
 	}
 	defer rows.Close()
 
+	order := Order{}
 	if rows.Next() {
-
 		_ = rows.Scan(&order.User, &order.Number, &order.CreatedAt,
 			&order.StartedAt, &order.FinishedAt, &order.FailedAt, &order.Status)
-		if order.User == claims["user"] {
-			order.ResponseStatus = constants.AnswerSuccessfully
-		} else {
-			order.ResponseStatus = constants.AnswerUploadedAnotherUser
+		if order.User != claims["user"] {
+			return nil, constants.ErrUploadedAnotherUser
 		}
 
-		return order, nil
+		return nil, constants.ErrOrderUpload
 	}
 
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	if _, err := conn.Exec(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now()); err != nil {
-		constants.Logger.ErrorLog(err)
-		return nil, err
+		return nil, constants.ErrInvalidFormat
 	}
 	/////////////////////////////////////////////////////////////////
 
-	order.ResponseStatus = constants.AnswerAccepted
-	return order, nil
+	return &order, nil
 }
 
 func (dbc *DBConnector) SetStartedAt(number int, tkn string) (*Order, error) {
-	order := NewOrder()
-
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	timeNow := time.Now()
 	if _, err = conn.Query(ctx, constants.QueryUpdateStartedAt, timeNow, number); err != nil {
-		return nil, err
+		return nil, constants.ErrInvalidFormat
 	}
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		order.Number = strconv.Itoa(number)
-		order.StartedAt = timeNow
-		order.ResponseStatus = constants.AnswerUserNotAuthenticated
-
-		return order, nil
+		return nil, constants.ErrUserNotAuthenticated
 	}
 
-	order.Number = strconv.Itoa(number)
-	order.User = claims["user"].(string)
-	order.StartedAt = timeNow
-	order.ResponseStatus = constants.AnswerSuccessfully
+	order := Order{
+		Number:    strconv.Itoa(number),
+		User:      claims["user"].(string),
+		StartedAt: timeNow,
+	}
 
-	return order, nil
+	return &order, nil
 }
 
-func (dbc *DBConnector) AddAccrual() {
-
-}
-
-func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*Balance, error) {
-	balance := NewBalance()
-
-	balance.Number = number
-	balance.Withdrawn = sumWithdraw
+func (dbc *DBConnector) TryWithdraw(tkn string, number string, sumWithdraw float64) (*Balances, error) {
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		balance.ResponseStatus = constants.AnswerUserNotAuthenticated
-		return balance, nil
+		return nil, constants.ErrUserNotAuthenticated
 	}
 
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryOrderBalansTemplate, claims["user"], number)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 
-	var bdb BalanceDB
+	balances := Balances{}
 	if rows.Next() {
 
-		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
+		err = rows.Scan(&balances.Number, &balances.Total, &balances.Withdrawn, &balances.Current)
 		if err != nil {
-			return nil, err
+			return nil, constants.ErrErrorServer
 		}
-		if bdb.Total < sumWithdraw {
-			balance.ResponseStatus = constants.AnswerInsufficientFunds
-			return balance, nil
+		if balances.Total < sumWithdraw {
+			return nil, constants.ErrInsufficientFunds
 		}
 	}
-	balance.BalanceDB = &bdb
 	conn.Release()
 
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 	//TODO: Добавляем спсанные баллы
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual, sumWithdraw, time.Now(), "MINUS", number); err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	rows.Close()
 
 	conn.Release()
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err = conn.Query(ctx, constants.QueryOrderWhereNumTemplate, claims["user"], number)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	if !rows.Next() {
 		rows.Close()
 		_, err = conn.Query(ctx, constants.QueryAddOrderTemplate, claims["user"], number, time.Now())
 		if err != nil {
-			return nil, err
+			return nil, constants.ErrErrorServer
 		}
 	}
 
-	balance.ResponseStatus = constants.AnswerSuccessfully
-	return balance, nil
+	return &balances, nil
 }
 
-func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*OrdersDB, error) {
-	ordersDB := NewOrdersDB()
-
+func (dbc *DBConnector) ListOrder(tkn string, addressAcSys string) (*OrdersAccrual, error) {
 	ctx := context.Background()
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		ordersDB.ResponseStatus = constants.AnswerUserNotAuthenticated
-		return ordersDB, nil
+		return nil, constants.ErrUserNotAuthenticated
 	}
 
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QueryListOrderTemplate, claims["user"])
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrInvalidFormat
 	}
 	defer rows.Close()
 
-	for rows.Next() {
-		var ord OrderDB
+	var orders OrdersAccrual
 
-		err = rows.Scan(&ord.Number, &ord.Status, &ord.Accrual, &ord.UploadedAt)
+	for rows.Next() {
+		var order OrderAccrual
+
+		err = rows.Scan(&order.Number, &order.Status, &order.Accrual, &order.UploadedAt)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
 		}
 		fmt.Println()
-		ss, err := GetOrder4AS(addressAcSys, ord.Number)
+		ss, err := GetOrder4AS(addressAcSys, order.Number)
 		if err == nil {
-			ord.Status = ss.Status
-			ord.Accrual = ss.Accrual
+			order.Status = ss.Status
+			order.Accrual = ss.Accrual
 		}
-		ordersDB.OrderDB = append(ordersDB.OrderDB, ord)
+		orders.OrderAccrual = append(orders.OrderAccrual, order)
 	}
-	if len(ordersDB.OrderDB) == 0 {
-		ordersDB.ResponseStatus = constants.AnswerNoContent
-		return ordersDB, nil
+	if len(orders.OrderAccrual) == 0 {
+		return nil, constants.ErrNoContent
 	}
 
-	ordersDB.ResponseStatus = constants.AnswerSuccessfully
-	return ordersDB, nil
+	return &orders, nil
 }
 
 func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balances, error) {
-	balances := NewBalances()
-
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		balances.ResponseStatus = constants.AnswerUserNotAuthenticated
-		return balances, nil
+		return nil, constants.ErrUserNotAuthenticated
 	}
 
-	//rows, err := conn.Query(ctx, constants.QueryUserBalansTemplate, claims["user"])
 	rows, err := conn.Query(ctx, constants.QueryUserOrdes, claims["user"])
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer rows.Close()
 
-	var balancesDB []BalanceDB
+	var balances []Balances
 	for rows.Next() {
-		var bdb BalanceDB
+		var bdb Balances
 
 		err = rows.Scan(&bdb.Number, &bdb.Total, &bdb.Withdrawn, &bdb.Current)
 		if err != nil {
@@ -338,117 +300,113 @@ func (dbc *DBConnector) BalancesOrders(tkn string, addressAcSys string) (*Balanc
 		if err == nil {
 			bdb.Current = ss.Accrual
 		}
-		balancesDB = append(balancesDB, bdb)
+		balances = append(balances, bdb)
 	}
-	if len(balancesDB) == 0 {
-		balances.ResponseStatus = constants.AnswerNoContent
-		return balances, nil
+	if len(balances) == 0 {
+		return nil, constants.ErrNoContent
 	}
 
-	for _, val := range balancesDB {
-		balances.TotalBalanceDB.Withdrawn = balances.TotalBalanceDB.Withdrawn + val.Withdrawn
-		balances.TotalBalanceDB.Current = balances.TotalBalanceDB.Current + val.Current
+	var totalBalance Balances
+	for _, val := range balances {
+		totalBalance.Withdrawn = totalBalance.Withdrawn + val.Withdrawn
+		totalBalance.Current = totalBalance.Current + val.Current
 	}
-	balances.TotalBalanceDB.Current = balances.TotalBalanceDB.Current - balances.TotalBalanceDB.Withdrawn
+	totalBalance.Current = totalBalance.Current - totalBalance.Withdrawn
 
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 
-	balances.ResponseStatus = constants.AnswerSuccessfully
-	return balances, nil
+	return &totalBalance, nil
 }
 
 func (dbc *DBConnector) UserWithdrawal(tkn string) (*Withdraws, error) {
-	withdraws := NewWithdraws()
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	claims, ok := token.ExtractClaims(tkn)
 	if !ok {
-		withdraws.ResponseStatus = constants.AnswerUserNotAuthenticated
-		return withdraws, nil
+		return nil, constants.ErrUserNotAuthenticated
 	}
 
 	rows, err := conn.Query(ctx, constants.QuerySelectAccrual, claims["user"], "MINUS")
 	if err != nil {
-		withdraws.ResponseStatus = constants.AnswerInvalidFormat
-		return withdraws, nil
+		//return nil, fmt.Errorf("%w", constants.ErrInvalidFormat)
+		return nil, constants.ErrInvalidFormat
 	}
 	defer rows.Close()
 
+	var withdraws Withdraws
 	for rows.Next() {
-		var bdb withdrawDB
+		var withdraw Withdraw
 
-		err = rows.Scan(&bdb.Order, &bdb.DateAccrual, &bdb.Withdraw, &bdb.Current)
+		err = rows.Scan(&withdraw.Order, &withdraw.DateAccrual, &withdraw.Withdraw, &withdraw.Current)
 		if err != nil {
 			constants.Logger.ErrorLog(err)
 			continue
 		}
-		withdraws.WithdrawDB = append(withdraws.WithdrawDB, bdb)
+		withdraws.Withdraw = append(withdraws.Withdraw, withdraw)
 	}
 
-	if len(withdraws.WithdrawDB) == 0 {
-		withdraws.ResponseStatus = constants.AnswerNoContent
-		return withdraws, nil
+	if len(withdraws.Withdraw) == 0 {
+		return nil, constants.ErrNoContent
 	}
 
-	withdraws.ResponseStatus = constants.AnswerSuccessfully
-	return withdraws, nil
+	return &withdraws, nil
 }
 
-func (dbc *DBConnector) VerificationOrderExists(number int) (constants.Answer, error) {
+func (dbc *DBConnector) VerificationOrderExists(number int) error {
 
 	ctx := context.Background()
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	rows, err := conn.Query(ctx, constants.QuerySelectAccrualPLUSS, number)
 	if err != nil {
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		return constants.AnswerConflict, nil
+		return constants.ErrConflict
 	}
 
-	return constants.AnswerSuccessfully, nil
+	return nil
 }
 
-func (dbc *DBConnector) SetValueScoringOrder(fullScoringOrder *channel.FullScoringOrder) (constants.Answer, error) {
+func (dbc *DBConnector) SetValueScoringOrder(scoringOrder *channel.ScoringOrder) error {
 
 	ctx := context.Background()
 	tx, err := dbc.Pool.Begin(ctx)
 	if err != nil {
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 
 	conn, err := dbc.Pool.Acquire(ctx)
 	if err != nil {
 		_ = tx.Rollback(ctx)
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	if _, err = conn.Query(ctx, constants.QueryAddAccrual,
-		fullScoringOrder.ScoringOrder.Accrual, time.Now(), "PLUS", fullScoringOrder.ScoringOrder.Order); err != nil {
+		scoringOrder.Accrual, time.Now(), "PLUS", scoringOrder.Order); err != nil {
 
 		_ = tx.Rollback(ctx)
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 	conn.Release()
 
 	nameColum := ""
-	switch fullScoringOrder.ScoringOrder.Status {
+	switch scoringOrder.Status {
 	case "REGISTERED":
 		nameColum = "createdAt"
 	case "INVALID":
@@ -458,27 +416,27 @@ func (dbc *DBConnector) SetValueScoringOrder(fullScoringOrder *channel.FullScori
 	case "PROCESSED":
 		nameColum = "finishedAt"
 	default:
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 
 	conn, err = dbc.Pool.Acquire(ctx)
 	if err != nil {
-		return constants.AnswerErrorServer, err
+		return constants.ErrErrorServer
 	}
 	defer conn.Release()
 
 	if _, err = conn.Query(ctx,
 		fmt.Sprintf(`UPDATE gofermart.orders
 					SET "%s"=$2
-					WHERE "orderID"=$1;`, nameColum), fullScoringOrder.ScoringOrder.Order, time.Now()); err != nil {
+					WHERE "orderID"=$1;`, nameColum), scoringOrder.Order, time.Now()); err != nil {
 
 		_ = tx.Rollback(ctx)
-		return constants.AnswerErrorServer, err
+		return constants.ErrInvalidFormat
 	}
 
 	_ = tx.Commit(ctx)
 
-	return constants.AnswerSuccessfully, nil
+	return nil
 }
 
 func CreateModeLDB(Pool *pgxpool.Pool) {
@@ -580,7 +538,7 @@ func GetOrder4AS(addressAcSys string, number string) (*channel.ScoringOrder, err
 		fmt.Println(arrBody)
 	}
 
-	ScoringOrder := channel.NewScoringService()
+	ScoringOrder := channel.NewScoringOrder()
 	if err = json.NewDecoder(body).Decode(ScoringOrder); err != nil {
 		return nil, err
 	}
