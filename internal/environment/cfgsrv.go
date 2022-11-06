@@ -7,20 +7,28 @@ import (
 
 	"github.com/caarlos0/env/v6"
 
-	"gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/channel"
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 type ServerConfigENV struct {
-	Address string `env:"ADDRESS" envDefault:"localhost:8080"`
+	Address        string `env:"ADDRESS" envDefault:"localhost:8080"`
+	AccrualAddress string `env:"ACCRUAL_SYSTEM_ADDRESS" envDefault:"http://localhost:8000"`
+	DemoMode       string `env:"DEMO_MODE" envDefault:"0"`
 }
 
 type ServerConfig struct {
-	Address string
+	Address        string
+	AccrualAddress string
+	DemoMode       bool
+	ChanData       chan *channel.ScoringOrder
 }
 
-func (sc *ServerConfig) SetConfigServer() {
+func NewConfigServer() (*ServerConfig, error) {
 
 	addressPtr := flag.String("a", constants.PortServer, "порт сервера")
+	addressAcSysPtr := flag.String("r", constants.PortAcSysServer, "сервер системы балов")
+	demoMode := flag.Bool("m", constants.DemoMode, "это демо режим")
 	flag.Parse()
 
 	var cfgENV ServerConfigENV
@@ -29,10 +37,29 @@ func (sc *ServerConfig) SetConfigServer() {
 		log.Fatal(err)
 	}
 
-	databaseDsn := cfgENV.Address
-	if _, ok := os.LookupEnv("DATABASE_DSN"); !ok {
-		databaseDsn = *addressPtr
+	addresServer := cfgENV.Address
+	if _, ok := os.LookupEnv("ADDRESS"); !ok {
+		addresServer = *addressPtr
 	}
 
-	sc.Address = databaseDsn
+	addressAcSysServer := cfgENV.AccrualAddress
+	if _, ok := os.LookupEnv("ACCRUAL_SYSTEM_ADDRESS"); !ok {
+		addressAcSysServer = *addressAcSysPtr
+	}
+
+	demoModeServer := false
+	if cfgENV.DemoMode != "0" {
+		demoModeServer = true
+	}
+	if _, ok := os.LookupEnv("DEMO_MODE"); !ok {
+		demoModeServer = *demoMode
+	}
+
+	sc := ServerConfig{
+		addresServer,
+		addressAcSysServer,
+		demoModeServer,
+		make(chan *channel.ScoringOrder),
+	}
+	return &sc, err
 }

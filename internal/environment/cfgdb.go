@@ -2,11 +2,11 @@ package environment
 
 import (
 	"flag"
-	"gofermart/internal/constants"
-	"log"
 	"os"
 
 	"github.com/caarlos0/env/v6"
+
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 type DBConfig struct {
@@ -15,11 +15,11 @@ type DBConfig struct {
 }
 
 type DBConfigENV struct {
-	DatabaseDsn string `env:"DATABASE_DSN"`
+	DatabaseDsn string `env:"DATABASE_URI"`
 	Key         string `env:"KEY"`
 }
 
-func (dbc *DBConfig) SetConfigDB() {
+func NewConfigDB() (*DBConfig, error) {
 
 	keyDatabaseDsn := flag.String("d", "", "строка соединения с базой")
 	keyFlag := flag.String("k", "", "ключ хеша")
@@ -28,11 +28,11 @@ func (dbc *DBConfig) SetConfigDB() {
 	var cfgENV DBConfigENV
 	err := env.Parse(&cfgENV)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	databaseDsn := cfgENV.DatabaseDsn
-	if _, ok := os.LookupEnv("DATABASE_DSN"); !ok {
+	if _, ok := os.LookupEnv("DATABASE_URI"); !ok {
 		databaseDsn = *keyDatabaseDsn
 	}
 
@@ -44,6 +44,9 @@ func (dbc *DBConfig) SetConfigDB() {
 		keyHash = string(constants.HashKey[:])
 	}
 
-	dbc.DatabaseDsn = databaseDsn
-	dbc.Key = keyHash
+	dbc := DBConfig{
+		databaseDsn,
+		keyHash,
+	}
+	return &dbc, err
 }

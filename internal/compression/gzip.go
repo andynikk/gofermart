@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
+	"strings"
 )
 
 func Compress(data []byte) ([]byte, error) {
+
 	var valByte bytes.Buffer
 	writer := gzip.NewWriter(&valByte)
 	if _, err := writer.Write(data); err != nil {
@@ -31,4 +34,21 @@ func Decompress(data []byte) ([]byte, error) {
 	}
 
 	return valByte.Bytes(), nil
+}
+
+func DecompressBody(contentEncoding string, body io.Reader) error {
+	var arrBody []byte
+	if strings.Contains(contentEncoding, "gzip") {
+		bytBody, err := io.ReadAll(body)
+		if err != nil {
+			return err
+		}
+		arrBody, err = Decompress(bytBody)
+		if err != nil {
+			return err
+		}
+
+		body = bytes.NewReader(arrBody)
+	}
+	return nil
 }

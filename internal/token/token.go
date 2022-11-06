@@ -1,11 +1,11 @@
 package token
 
 import (
-	"fmt"
-	"github.com/golang-jwt/jwt/v4"
-	"net/http"
+	"time"
 
-	"gofermart/internal/constants"
+	"github.com/golang-jwt/jwt/v4"
+
+	"github.com/andynikk/gofermart/internal/constants"
 )
 
 type Claims struct {
@@ -26,7 +26,7 @@ func (c *Claims) GenerateJWT() (string, error) {
 	tokenString, err := token.SignedString(constants.HashKey)
 
 	if err != nil {
-		fmt.Errorf("Something went wrong: %s", err.Error())
+		constants.Logger.ErrorLog(err)
 	}
 
 	return tokenString, nil
@@ -48,33 +48,10 @@ func ExtractClaims(tokenStr string) (jwt.MapClaims, bool) {
 	}
 }
 
-func IsAuthorized(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		w.Header().Set("Connection", "close")
-		defer r.Body.Close()
-
-		if r.Header["Token"] != nil {
-			token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("There was an error")
-				}
-				return constants.HashKey, nil
-			})
-
-			if err != nil {
-				w.WriteHeader(http.StatusForbidden)
-				w.Header().Add("Content-Type", "application/json")
-				return
-			}
-
-			if token.Valid {
-				endpoint(w, r)
-			}
-
-		} else {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Not Authorized"))
-		}
-	})
+func NewClaims(name string) *Claims {
+	return &Claims{
+		Authorized: true,
+		User:       name,
+		Exp:        time.Now().Add(time.Hour * constants.TimeLiveToken).Unix(),
+	}
 }

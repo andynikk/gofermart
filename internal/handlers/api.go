@@ -3,362 +3,350 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"gofermart/internal/token"
-	"io"
-	"io/ioutil"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/theplant/luhn"
 
-	"gofermart/internal/compression"
-	"gofermart/internal/constants"
-	"gofermart/internal/postgresql"
+	"github.com/andynikk/gofermart/internal/channel"
+	"github.com/andynikk/gofermart/internal/compression"
+	"github.com/andynikk/gofermart/internal/constants"
+	"github.com/andynikk/gofermart/internal/postgresql"
+	"github.com/andynikk/gofermart/internal/token"
 )
 
-//POST
-func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
-	var bodyJSON io.Reader
-	var arrBody []byte
-
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	bodyJSON = r.Body
-	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
-			return
-		}
-
-		arrBody, err = compression.Decompress(bytBody)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-			return
-		}
-
-		bodyJSON = bytes.NewReader(arrBody)
-	}
-
-	respByte, err := ioutil.ReadAll(bodyJSON)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-	}
-
-	newAccount := new(postgresql.Account)
-	newAccount.Pool = srv.Pool
-	if err := json.Unmarshal(respByte, &newAccount.User); err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-	}
-	newAccount.Key = srv.Cfg.Key
-
-	tx, err := srv.Pool.Begin(srv.Context.Ctx)
-	rez := newAccount.NewAccount()
-	w.WriteHeader(rez)
-	if rez == http.StatusOK {
-		if err := tx.Commit(srv.Context.Ctx); err != nil {
-			constants.Logger.ErrorLog(err)
-		}
-
-		tokenString := ""
-		ct := token.Claims{Authorized: true, User: newAccount.Name, Exp: constants.TimeLiveToken}
-		if tokenString, err = ct.GenerateJWT(); err != nil {
-			constants.Logger.ErrorLog(err)
-		}
-		w.Write([]byte(tokenString))
-	} else {
-		if err := tx.Rollback(srv.Context.Ctx); err != nil {
-			constants.Logger.ErrorLog(err)
-		}
-	}
+func (srv *Server) HandlerNotFound(rw http.ResponseWriter, r *http.Request) {
+	http.Error(rw, "Page "+r.URL.Path+" not found", http.StatusNotFound)
 }
 
+func (srv *Server) HandleFunc(rw http.ResponseWriter, rq *http.Request) {
+
+	content := srv.StartPage()
+
+	acceptEncoding := rq.Header.Get("Accept-Encoding")
+
+	metricsHTML := []byte(content)
+	byteMterics := bytes.NewBuffer(metricsHTML).Bytes()
+	compData, err := compression.Compress(byteMterics)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+	}
+
+	var bodyBate []byte
+	if strings.Contains(acceptEncoding, "gzip") {
+		rw.Header().Add("Content-Encoding", "gzip")
+		bodyBate = compData
+	} else {
+		bodyBate = metricsHTML
+	}
+
+	rw.Header().Add("Content-Type", "text/html")
+	if _, err := rw.Write(bodyBate); err != nil {
+		constants.Logger.ErrorLog(err)
+		return
+	}
+
+	//rw.WriteHeader(http.StatusOK)
+}
+
+// POST
+// 1 TODO: Регистрация пользователя
+func (srv *Server) apiUserRegisterPOST(w http.ResponseWriter, r *http.Request) {
+
+	user := postgresql.User{}
+	if err := user.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// 1.2 TODO: Регистрация пользователя в БД.
+	// 1.2.1 TODO: Ищем пользовотеля в таблице БД. Если находим, то не создаем. Пароль кэшируется
+	tokenString := ""
+	account, err := srv.DBConnector.NewAccount(user.Name, user.Password)
+	if err != nil {
+		w.Header().Add(constants.HeaderAuthorization, tokenString)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
+	}
+
+	// 1.3 TODO: Создание токена
+	// 1.3.1 TODO: Если пользователь добавлен создаем токен
+	tc := token.NewClaims(account.Name)
+	if tokenString, err = tc.GenerateJWT(); err != nil {
+		w.Header().Add(constants.HeaderAuthorization, "")
+		http.Error(w, "Ошибка получения токена", http.StatusInternalServerError)
+		return
+	}
+
+	// 1.4 TODO: Добавление токена в Header
+	w.Header().Add(constants.HeaderAuthorization, tokenString)
+	w.WriteHeader(http.StatusOK)
+}
+
+// 2 TODO: Аутентификации пользователя
 func (srv *Server) apiUserLoginPOST(w http.ResponseWriter, r *http.Request) {
 
-	var bodyJSON io.Reader
-	var arrBody []byte
+	user := postgresql.User{}
 
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	bodyJSON = r.Body
-	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
-			return
-		}
-
-		arrBody, err = compression.Decompress(bytBody)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-			return
-		}
-
-		bodyJSON = bytes.NewReader(arrBody)
-	}
-
-	respByte, err := ioutil.ReadAll(bodyJSON)
-	if err != nil {
+	if err := user.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	Account := new(postgresql.Account)
-	Account.Pool = srv.Pool
-	if err := json.Unmarshal(respByte, &Account.User); err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
-	}
-	Account.Key = srv.Cfg.Key
-
-	rez := Account.GetAccount()
-	w.WriteHeader(rez)
-
-	if rez != http.StatusOK {
-		return
-	}
-
+	// 2.1 TODO: Аутентификации пользователя в БД
 	tokenString := ""
-	tc := token.Claims{Authorized: true, User: Account.Name, Exp: constants.TimeLiveToken}
-	if tokenString, err = tc.GenerateJWT(); err != nil {
-		constants.Logger.ErrorLog(err)
-	}
-	w.Header().Add("Authorization", tokenString)
-	r.Header.Add("Authorization", tokenString)
-
-	w.Write([]byte(tokenString))
-}
-
-func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
-	var bodyJSON io.Reader
-	var arrBody []byte
-
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	bodyJSON = r.Body
-	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
-			return
-		}
-
-		arrBody, err = compression.Decompress(bytBody)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-			return
-		}
-
-		bodyJSON = bytes.NewReader(arrBody)
-	}
-
-	respByte, err := ioutil.ReadAll(bodyJSON)
+	account, err := srv.DBConnector.GetAccount(user.Name, user.Password)
 	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Error get value", http.StatusInternalServerError)
-	}
-
-	numOrder, err := strconv.Atoi(string(respByte))
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "not Luna", http.StatusInternalServerError)
-	}
-
-	if !luhn.Valid(numOrder) {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "not Luna", http.StatusUnprocessableEntity)
+		w.Header().Add(constants.HeaderAuthorization, tokenString)
+		http.Error(w, err.Error(), HTTPErrors(err))
 		return
 	}
 
-	order := new(postgresql.Order)
-	order.Number = numOrder
-	order.Pool = srv.Pool
-	if r.Header["Authorization"] != nil {
-		order.Token = r.Header["Authorization"][0]
+	// 2.2 TODO: Создание токена
+	tc := token.NewClaims(account.Name)
+	if tokenString, err = tc.GenerateJWT(); err != nil {
+		w.Header().Add(constants.HeaderAuthorization, "")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	tx, err := srv.Pool.Begin(srv.Context.Ctx)
-	rez := order.NewOrder()
-	w.WriteHeader(rez)
-	if rez == http.StatusOK {
-		if err := tx.Commit(srv.Context.Ctx); err != nil {
-			constants.Logger.ErrorLog(err)
+	// 2.2 TODO: Добавление токена в Header
+	w.Header().Add(constants.HeaderAuthorization, tokenString)
+	w.WriteHeader(http.StatusOK)
+}
+
+// 3 TODO: Добавление нового ордера
+func (srv *Server) apiUserOrdersPOST(w http.ResponseWriter, r *http.Request) {
+
+	respByte := r.Header.Get(constants.HeaderMiddlewareBody)
+	numOrder, err := strconv.Atoi(respByte)
+	if err != nil || numOrder == 0 {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, "bad number order", http.StatusUnprocessableEntity)
+		return
+	}
+
+	//TODO: Проверка на Луна
+	if !luhn.Valid(numOrder) {
+		http.Error(w, "bad number order", http.StatusUnprocessableEntity)
+		return
+	}
+
+	tokenHeader := ""
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
+	}
+
+	// 3.1 TODO: Добавление нового ордера в БД.
+	// 3.1.1 TODO: Ищем ордер по номеру. Если не находим, то создаем
+	if _, err := srv.DBConnector.NewOrder(tokenHeader, numOrder); err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+
+	if srv.DemoMode {
+
+		goodOrderSS := NewGoodOrderSS()
+
+		var arrGoodOrderSS []GoodOrderSS
+		arrGoodOrderSS = append(arrGoodOrderSS, *goodOrderSS)
+
+		orderSS := OrderSS{
+			string(respByte),
+			arrGoodOrderSS,
 		}
-	} else {
-		if err := tx.Rollback(srv.Context.Ctx); err != nil {
+		err = srv.AddOrderScoringOrder(&orderSS)
+		if err != nil {
 			constants.Logger.ErrorLog(err)
+			return
 		}
+
+		if _, err = srv.DBConnector.SetStartedAt(numOrder, tokenHeader); err != nil {
+			constants.Logger.ErrorLog(err)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
 	}
 }
 
+// 4 TODO: Списание баллов лояльности
 func (srv *Server) apiUserWithdrawPOST(w http.ResponseWriter, r *http.Request) {
-	var bodyJSON io.Reader
-	var arrBody []byte
 
-	contentEncoding := r.Header.Get("Content-Encoding")
-
-	bodyJSON = r.Body
-	if strings.Contains(contentEncoding, "gzip") {
-		bytBody, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка получения Content-Encoding", http.StatusInternalServerError)
-			return
-		}
-
-		arrBody, err = compression.Decompress(bytBody)
-		if err != nil {
-			constants.Logger.ErrorLog(err)
-			http.Error(w, "Ошибка распаковки", http.StatusInternalServerError)
-			return
-		}
-
-		bodyJSON = bytes.NewReader(arrBody)
-	}
-
-	respByte, err := ioutil.ReadAll(bodyJSON)
-	if err != nil {
-		constants.Logger.ErrorLog(err)
-		http.Error(w, "Ошибка чтения тела", http.StatusInternalServerError)
-	}
-
-	orderWithdraw := new(postgresql.OrderWithdraw)
-	orderWithdraw.Pool = srv.Pool
-	if err := json.Unmarshal(respByte, &orderWithdraw); err != nil {
+	withdraw := postgresql.Withdraw{}
+	if err := withdraw.Unmarshal([]byte(r.Header.Get(constants.HeaderMiddlewareBody))); err != nil {
 		constants.Logger.ErrorLog(err)
 		http.Error(w, "Ошибка Unmarshal", http.StatusInternalServerError)
 		return
 	}
-	if r.Header["Authorization"] != nil {
-		orderWithdraw.Token = r.Header["Authorization"][0]
+
+	tokenHeader := ""
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
-	w.WriteHeader(orderWithdraw.TryWithdraw())
+	// 4.1 TODO: Списание баллов лояльности в БД
+	// 4.1.1 TODO: Получаем баланс начисленных, списанных баллов
+	// 4.1.2 TODO: Если начисленных баллов больше, чем списанных, то разрешаем спсание
+	// 4.1.3 TODO: Добавляем запись с количеством списанных баллов
+	if _, err := srv.DBConnector.TryWithdraw(tokenHeader, withdraw.Order, withdraw.Withdraw); err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+
 }
 
-//GET
+// GET
+// 5 TODO: Получение списка ордеров по токену
 func (srv *Server) apiUserOrdersGET(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
-	order := new(postgresql.Order)
-	order.Number = 0
-	order.Pool = srv.Pool
-	if r.Header["Authorization"] != nil {
-		order.Token = r.Header["Authorization"][0]
+	tokenHeader := ""
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
-
-	listOrder, status := order.ListOrder()
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		w.Write([]byte(""))
-		return
-	}
-
-	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
+	// 5.1 TODO: Получение списка ордеров по токену в БД
+	// 5.1.1 TODO: Из токена получаем имя пользователя
+	// 5.1.2 TODO: По имени пользователя получаем ордера
+	orders, err := srv.DBConnector.ListOrder(tokenHeader, srv.AccrualAddress)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	w.WriteHeader(status)
-	w.Write(listOrderJSON)
+	strJSON, err := orders.Marshal()
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	// 5.2 TODO: Вывод ответа
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(strJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
-func (srv *Server) apiNextStatus(w http.ResponseWriter, r *http.Request) {
-	order := new(postgresql.Order)
-	order.Number = 0
-	order.Pool = srv.Pool
-
-	order.SetNextStatus()
-}
-
+// 7 TODO: получаем баланс пользователя
 func (srv *Server) apiUserBalanceGET(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
-	order := new(postgresql.Order)
-	order.Number = 0
-	order.Pool = srv.Pool
-	if r.Header["Authorization"] != nil {
-		order.Token = r.Header["Authorization"][0]
+	tokenHeader := ""
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
-	listBalans, status := order.BalansOrders()
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		w.Write([]byte(""))
+	// 7.1 TODO: Получаем баланс пользователя
+	// 7.1 TODO: По токену получаем пользователя
+	// 7.2 TODO: По пользовотелю получаем общий баланс начисленных и списанных баллов
+	balances, err := srv.DBConnector.BalancesOrders(tokenHeader, srv.AccrualAddress)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
+	}
+	// 7.3 TODO: Вывод ответа
+	strJSON, err := balances.Marshal()
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	listBalansJSON, err := json.MarshalIndent(listBalans, "", " ")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(strJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	w.WriteHeader(status)
-	w.Write(listBalansJSON)
 }
 
+// 8 TODO: Получение информации о выводе средств
 func (srv *Server) apiUserWithdrawalsGET(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
-	order := new(postgresql.Order)
-	order.Number = 0
-	order.Pool = srv.Pool
-	if r.Header["Authorization"] != nil {
-		order.Token = r.Header["Authorization"][0]
+	tokenHeader := ""
+	if r.Header[constants.HeaderAuthorization] != nil {
+		tokenHeader = r.Header[constants.HeaderAuthorization][0]
 	}
 
-	listBalans, status := order.UserWithdrawal()
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		w.Write([]byte(""))
+	// 8.1 TODO: Получение информации о выводе средств в разрезе ордера
+	withdraws, err := srv.DBConnector.UserWithdrawal(tokenHeader)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
 		return
 	}
 
-	listBalansJSON, err := json.MarshalIndent(listBalans, "", " ")
+	// 8.2 TODO: Вывод ответа
+	strJSON, err := withdraws.Marshal()
 	if err != nil {
 		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
+		return
 	}
 
-	w.WriteHeader(status)
-	w.Write(listBalansJSON)
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(strJSON)
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
+// 9 TODO: Взаимодействие с системой расчёта начислений баллов лояльности
 func (srv *Server) apiUserAccrualGET(w http.ResponseWriter, r *http.Request) {
+	number := mux.Vars(r)["number"]
 
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Content-Type", "application/json")
+	//data := make(chan *postgresql.FullScoringOrder)
+	// 9.1 TODO: Запускаем горутину с номером и каналом, где будет хранится ответ черного ящика
+	// 9.1.1 TODO: Горутина запрашивает ответ от черного ящика.
+	// 9.1.2 TODO: Если статус ответа не 429, то в канал пишется ответ горутина заканчивает свою работу
+	// 9.1.3 TODO: Если статус ответа 429, то горутина засыпает на секунду и повторяет запрос к черному ящику
+	// 9.1.3.1 TODO: так крутится пока не будет статус не 429
+	go srv.ScoringOrder(number)
 
-	order := new(postgresql.Order)
-	order.Number = 0
-	order.Pool = srv.Pool
-	if r.Header["Authorization"] != nil {
-		order.Token = r.Header["Authorization"][0]
-	}
+	// 9.2 TODO: Добавляет данные в БД. Вечный цикл с прослушиванием канала.
+	// 9.2.1 TODO: Если в канале есть данные, то в БД добавляется запись начисления баллов ллояльности
+	// 9.2.2 TODO: Если запись с начисление по ордеру есть в базе, то вторая запись не происходит
+	fullScoringOrder := srv.executFSS()
 
-	listOrder, status := order.ListOrder()
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		w.Write([]byte(""))
+	listAccrualJSON, err := json.MarshalIndent(fullScoringOrder, "", " ")
+	if err != nil {
+		constants.Logger.ErrorLog(err)
+		http.Error(w, err.Error(), HTTPErrors(err))
 		return
 	}
 
-	listOrderJSON, err := json.MarshalIndent(listOrder, "", " ")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(listAccrualJSON)
 	if err != nil {
 		constants.Logger.ErrorLog(err)
 	}
+}
 
-	w.WriteHeader(status)
-	w.Write(listOrderJSON)
+func (srv *Server) executFSS() (scoringOrder *channel.ScoringOrder) {
+	for {
+		select {
+		case <-srv.ChanData:
+			scoringOrder := <-srv.ChanData
+			_ = srv.SetValueScoringOrder(scoringOrder)
+			return scoringOrder
+		default:
+			fmt.Println(0)
+		}
+	}
+}
+
+func (srv *Server) Shutdown() {
+	constants.Logger.InfoLog("server stopped")
 }

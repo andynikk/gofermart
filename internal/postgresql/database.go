@@ -3,44 +3,40 @@ package postgresql
 import (
 	"context"
 	"errors"
-
-	"gofermart/internal/environment"
+	"log"
 
 	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/andynikk/gofermart/internal/environment"
 )
 
-type Context struct {
-	Ctx        context.Context
-	CancelFunc context.CancelFunc
-}
-
 type DBConnector struct {
-	Pool    *pgxpool.Pool
-	Cfg     *environment.DBConfig
-	Context Context
+	Pool *pgxpool.Pool
+	Cfg  *environment.DBConfig
 }
 
-func (dbc *DBConnector) PoolDB() error {
-	dbCfg := new(environment.DBConfig)
-	dbCfg.SetConfigDB()
+func NewDBConnector() (*DBConnector, error) {
+	dbCfg, err := environment.NewConfigDB()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if dbCfg.DatabaseDsn == "" {
-		return errors.New("пустой путь к базе")
+		return nil, errors.New("пустой путь к базе")
 	}
 
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	pool, err := pgxpool.Connect(ctx, dbCfg.DatabaseDsn)
 	if err != nil {
 		cancelFunc = nil
-		return err
+		return nil, err
 	}
 
-	dbc.Pool = pool
-	dbc.Cfg = dbCfg
-	dbc.Context = Context{
-		Ctx:        ctx,
-		CancelFunc: cancelFunc,
+	dbc := DBConnector{
+		pool,
+		dbCfg,
 	}
 
-	return nil
+	cancelFunc()
+	return &dbc, nil
 }
